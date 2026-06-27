@@ -261,7 +261,7 @@ button.workout-summary:hover { background: transparent; transform: none; }
 @media (max-width: 760px) {
   .app-header { height: 64px; display: flex; justify-content: space-between; padding: 0 16px; }
   .desktop-nav { display: none; }
-  .account-chip > .icon-button { display: none; }
+  .account-chip > .icon-button { display: grid; place-items: center; }
   .page-container { width: min(100% - 24px, 600px); padding: 28px 0 94px; }
   .mobile-nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 25; display: flex; justify-content: space-around; padding: 7px 8px max(7px, env(safe-area-inset-bottom)); background: rgba(255,254,250,.96); border-top: 1px solid var(--line); backdrop-filter: blur(15px); }
   .mobile-nav button { min-width: 58px; display: grid; justify-items: center; gap: 2px; padding: 5px 7px; background: transparent; color: #838780; border-radius: 10px; font-size: .62rem; }
