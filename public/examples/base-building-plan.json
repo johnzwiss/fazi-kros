@@ -1,0 +1,1133 @@
+{
+  "schemaVersion": 1,
+  "title": "Base Building Plan",
+  "description": "Five runs per week and three afternoon strength sessions, with mileage building gradually and one longer weekend run.",
+  "guidance": [
+    "Keep most runs conversational and finish feeling like you could continue.",
+    "Monday is the main leg day; Wednesday stays upper-body and core focused.",
+    "If a week feels too heavy, repeat it instead of progressing.",
+    "Move the weekend long run between Saturday and Sunday before importing if needed."
+  ],
+  "weeks": [
+    {
+      "weekNumber": 1,
+      "summary": "Build aerobic durability while keeping strength consistent.",
+      "workouts": [
+        {
+          "day": "mon",
+          "type": "running",
+          "title": "Easy run",
+          "instructions": "Keep the effort conversational and controlled.",
+          "plannedMiles": 4
+        },
+        {
+          "day": "mon",
+          "type": "strength",
+          "title": "Lift A — Legs + Core",
+          "instructions": "Focus: Single-leg strength. Keep clean reps and leave a little in reserve.",
+          "plannedMinutes": 45,
+          "exercises": [
+            {
+              "name": "Bulgarian split squat",
+              "prescription": "3 × 8–12 / leg"
+            },
+            {
+              "name": "Romanian deadlift",
+              "prescription": "3 × 8–10"
+            },
+            {
+              "name": "Step-ups",
+              "prescription": "2–3 × 8–12 / leg"
+            },
+            {
+              "name": "Calf raises",
+              "prescription": "3 × 12–20"
+            },
+            {
+              "name": "Hanging knee raises",
+              "prescription": "3 × 8–15"
+            },
+            {
+              "name": "Side plank",
+              "prescription": "3 × 30–60 sec / side"
+            }
+          ]
+        },
+        {
+          "day": "tue",
+          "type": "running",
+          "title": "Easy run + strides",
+          "instructions": "Run conversationally, then finish with 4–6 relaxed strides.",
+          "plannedMiles": 3
+        },
+        {
+          "day": "wed",
+          "type": "strength",
+          "title": "Lift B — Upper + Core, Soccer-Friendly",
+          "instructions": "Focus: Pull-ups + bench. Keep clean reps and leave a little in reserve.",
+          "plannedMinutes": 45,
+          "exercises": [
+            {
+              "name": "Pull-ups or assisted pull-ups",
+              "prescription": "4 × 3–8"
+            },
+            {
+              "name": "Bench press",
+              "prescription": "3 × 8–12"
+            },
+            {
+              "name": "One-arm DB row",
+              "prescription": "3 × 8–12 / side"
+            },
+            {
+              "name": "Push-ups",
+              "prescription": "2 × comfortable fatigue"
+            },
+            {
+              "name": "DB curls",
+              "prescription": "2–3 × 10–15"
+            },
+            {
+              "name": "Dead bug",
+              "prescription": "3 × 8–12 / side"
+            }
+          ]
+        },
+        {
+          "day": "thu",
+          "type": "running",
+          "title": "Easy run",
+          "instructions": "Keep the effort conversational and controlled.",
+          "plannedMiles": 4
+        },
+        {
+          "day": "fri",
+          "type": "running",
+          "title": "Easy run",
+          "instructions": "Keep the effort conversational and controlled.",
+          "plannedMiles": 2
+        },
+        {
+          "day": "fri",
+          "type": "strength",
+          "title": "Lift C — Full Body Light",
+          "instructions": "Focus: Durability. Keep clean reps and leave a little in reserve.",
+          "plannedMinutes": 45,
+          "exercises": [
+            {
+              "name": "Incline DB bench",
+              "prescription": "3 × 10–15"
+            },
+            {
+              "name": "Lat pulldown or easy pull-ups",
+              "prescription": "3 × 6–10"
+            },
+            {
+              "name": "Goblet squat, light/moderate",
+              "prescription": "2–3 × 10–12"
+            },
+            {
+              "name": "Single-leg RDL, light/moderate",
+              "prescription": "2 × 8–10 / leg"
+            },
+            {
+              "name": "Farmer carries",
+              "prescription": "4 × 30–60 sec"
+            },
+            {
+              "name": "Core circuit",
+              "prescription": "2–3 rounds"
+            }
+          ]
+        },
+        {
+          "day": "sat",
+          "type": "running",
+          "title": "Long easy run",
+          "instructions": "Keep the effort conversational and controlled.",
+          "plannedMiles": 7
+        }
+      ]
+    },
+    {
+      "weekNumber": 2,
+      "summary": "Build aerobic durability while keeping strength consistent.",
+      "workouts": [
+        {
+          "day": "mon",
+          "type": "running",
+          "title": "Easy run",
+          "instructions": "Keep the effort conversational and controlled.",
+          "plannedMiles": 4
+        },
+        {
+          "day": "mon",
+          "type": "strength",
+          "title": "Lift A — Legs + Core",
+          "instructions": "Focus: Reverse lunge emphasis. Keep clean reps and leave a little in reserve.",
+          "plannedMinutes": 45,
+          "exercises": [
+            {
+              "name": "Reverse lunges",
+              "prescription": "3 × 8–12 / leg"
+            },
+            {
+              "name": "Hip thrust or glute bridge",
+              "prescription": "3 × 10–15"
+            },
+            {
+              "name": "DB Romanian deadlift",
+              "prescription": "3 × 8–10"
+            },
+            {
+              "name": "Standing calf raises",
+              "prescription": "3 × 12–20"
+            },
+            {
+              "name": "Pallof press",
+              "prescription": "3 × 10–12 / side"
+            },
+            {
+              "name": "Front plank",
+              "prescription": "3 × 45–75 sec"
+            }
+          ]
+        },
+        {
+          "day": "tue",
+          "type": "running",
+          "title": "Easy run + strides",
+          "instructions": "Run conversationally, then finish with 4–6 relaxed strides.",
+          "plannedMiles": 4
+        },
+        {
+          "day": "wed",
+          "type": "strength",
+          "title": "Lift B — Upper + Core, Soccer-Friendly",
+          "instructions": "Focus: Volume pressing. Keep clean reps and leave a little in reserve.",
+          "plannedMinutes": 45,
+          "exercises": [
+            {
+              "name": "Chin-ups or assisted chin-ups",
+              "prescription": "4 × 3–8"
+            },
+            {
+              "name": "Close-grip or DB bench",
+              "prescription": "3 × 8–12"
+            },
+            {
+              "name": "Seated cable row or band row",
+              "prescription": "3 × 10–12"
+            },
+            {
+              "name": "DB shoulder press, light",
+              "prescription": "2–3 × 8–12"
+            },
+            {
+              "name": "Hammer curls",
+              "prescription": "2–3 × 10–15"
+            },
+            {
+              "name": "Hollow hold",
+              "prescription": "3 × 20–40 sec"
+            }
+          ]
+        },
+        {
+          "day": "thu",
+          "type": "running",
+          "title": "Easy run",
+          "instructions": "Keep the effort conversational and controlled.",
+          "plannedMiles": 4
+        },
+        {
+          "day": "fri",
+          "type": "running",
+          "title": "Easy run",
+          "instructions": "Keep the effort conversational and controlled.",
+          "plannedMiles": 2
+        },
+        {
+          "day": "fri",
+          "type": "strength",
+          "title": "Lift C — Full Body Light",
+          "instructions": "Focus: Carry + trunk. Keep clean reps and leave a little in reserve.",
+          "plannedMinutes": 45,
+          "exercises": [
+            {
+              "name": "Push-ups",
+              "prescription": "3 × comfortable fatigue"
+            },
+            {
+              "name": "Chest-supported row",
+              "prescription": "3 × 10–12"
+            },
+            {
+              "name": "Split squat iso hold",
+              "prescription": "2 × 20–30 sec / leg"
+            },
+            {
+              "name": "Suitcase carries",
+              "prescription": "3 × 30–45 sec / side"
+            },
+            {
+              "name": "Band pull-aparts or face pulls",
+              "prescription": "2–3 × 15–20"
+            },
+            {
+              "name": "Side plank",
+              "prescription": "2–3 × 30–60 sec / side"
+            }
+          ]
+        },
+        {
+          "day": "sat",
+          "type": "running",
+          "title": "Long easy run",
+          "instructions": "Keep the effort conversational and controlled.",
+          "plannedMiles": 8
+        }
+      ]
+    },
+    {
+      "weekNumber": 3,
+      "summary": "Build aerobic durability while keeping strength consistent.",
+      "workouts": [
+        {
+          "day": "mon",
+          "type": "running",
+          "title": "Easy run",
+          "instructions": "Keep the effort conversational and controlled.",
+          "plannedMiles": 4
+        },
+        {
+          "day": "mon",
+          "type": "strength",
+          "title": "Lift A — Legs + Core",
+          "instructions": "Focus: Step-up strength. Keep clean reps and leave a little in reserve.",
+          "plannedMinutes": 45,
+          "exercises": [
+            {
+              "name": "Weighted step-ups",
+              "prescription": "3 × 8–10 / leg"
+            },
+            {
+              "name": "Single-leg RDL",
+              "prescription": "3 × 8–10 / leg"
+            },
+            {
+              "name": "Goblet squat",
+              "prescription": "3 × 10–12"
+            },
+            {
+              "name": "Seated calf raises",
+              "prescription": "3 × 12–20"
+            },
+            {
+              "name": "Hanging knee raises",
+              "prescription": "3 × 8–15"
+            },
+            {
+              "name": "Bird dog",
+              "prescription": "3 × 8–12 / side"
+            }
+          ]
+        },
+        {
+          "day": "tue",
+          "type": "running",
+          "title": "Easy run + strides",
+          "instructions": "Run conversationally, then finish with 4–6 relaxed strides.",
+          "plannedMiles": 4
+        },
+        {
+          "day": "wed",
+          "type": "strength",
+          "title": "Lift B — Upper + Core, Soccer-Friendly",
+          "instructions": "Focus: Pulling strength. Keep clean reps and leave a little in reserve.",
+          "plannedMinutes": 45,
+          "exercises": [
+            {
+              "name": "Pull-ups",
+              "prescription": "5 easy submax sets"
+            },
+            {
+              "name": "Incline DB bench",
+              "prescription": "3 × 10–12"
+            },
+            {
+              "name": "One-arm cable row",
+              "prescription": "3 × 10–12 / side"
+            },
+            {
+              "name": "Dips or bench dips, easy",
+              "prescription": "2 × 6–10"
+            },
+            {
+              "name": "EZ-bar or DB curls",
+              "prescription": "2–3 × 10–15"
+            },
+            {
+              "name": "Dead bug",
+              "prescription": "3 × 8–12 / side"
+            }
+          ]
+        },
+        {
+          "day": "thu",
+          "type": "running",
+          "title": "Easy run",
+          "instructions": "Keep the effort conversational and controlled.",
+          "plannedMiles": 5
+        },
+        {
+          "day": "fri",
+          "type": "running",
+          "title": "Easy run",
+          "instructions": "Keep the effort conversational and controlled.",
+          "plannedMiles": 2
+        },
+        {
+          "day": "fri",
+          "type": "strength",
+          "title": "Lift C — Full Body Light",
+          "instructions": "Focus: Movement quality. Keep clean reps and leave a little in reserve.",
+          "plannedMinutes": 45,
+          "exercises": [
+            {
+              "name": "Light bench press",
+              "prescription": "3 × 10–15"
+            },
+            {
+              "name": "Lat pulldown",
+              "prescription": "3 × 10–12"
+            },
+            {
+              "name": "Walking lunges, light",
+              "prescription": "2 × 10 / leg"
+            },
+            {
+              "name": "Farmer carries",
+              "prescription": "4 × 30–60 sec"
+            },
+            {
+              "name": "Calf raises",
+              "prescription": "2 × 15–20"
+            },
+            {
+              "name": "Core circuit",
+              "prescription": "2–3 rounds"
+            }
+          ]
+        },
+        {
+          "day": "sat",
+          "type": "running",
+          "title": "Long easy run",
+          "instructions": "Keep the effort conversational and controlled.",
+          "plannedMiles": 9
+        }
+      ]
+    },
+    {
+      "weekNumber": 4,
+      "summary": "Deload and absorb the work.",
+      "workouts": [
+        {
+          "day": "mon",
+          "type": "running",
+          "title": "Easy run",
+          "instructions": "Keep the effort conversational and controlled.",
+          "plannedMiles": 4
+        },
+        {
+          "day": "mon",
+          "type": "strength",
+          "title": "Lift A — Legs + Core, Deload",
+          "instructions": "Focus: Lower stress week. Keep clean reps and leave a little in reserve.",
+          "plannedMinutes": 45,
+          "exercises": [
+            {
+              "name": "Bulgarian split squat, lighter",
+              "prescription": "2 × 8–10 / leg"
+            },
+            {
+              "name": "Romanian deadlift, lighter",
+              "prescription": "2 × 8–10"
+            },
+            {
+              "name": "Step-ups, easy",
+              "prescription": "2 × 8 / leg"
+            },
+            {
+              "name": "Calf raises",
+              "prescription": "2 × 12–15"
+            },
+            {
+              "name": "Pallof press",
+              "prescription": "2 × 10 / side"
+            },
+            {
+              "name": "Plank",
+              "prescription": "2 × 45 sec"
+            }
+          ]
+        },
+        {
+          "day": "tue",
+          "type": "running",
+          "title": "Easy run + strides",
+          "instructions": "Run conversationally, then finish with 4–6 relaxed strides.",
+          "plannedMiles": 3
+        },
+        {
+          "day": "wed",
+          "type": "strength",
+          "title": "Lift B — Upper + Core, Deload",
+          "instructions": "Focus: Easy upper volume. Keep clean reps and leave a little in reserve.",
+          "plannedMinutes": 45,
+          "exercises": [
+            {
+              "name": "Pull-ups or assisted pull-ups",
+              "prescription": "3 easy sets"
+            },
+            {
+              "name": "Bench press, lighter",
+              "prescription": "2 × 8–10"
+            },
+            {
+              "name": "DB row",
+              "prescription": "2 × 10 / side"
+            },
+            {
+              "name": "Push-ups",
+              "prescription": "2 easy sets"
+            },
+            {
+              "name": "DB curls",
+              "prescription": "2 × 10–12"
+            },
+            {
+              "name": "Dead bug",
+              "prescription": "2 × 8–10 / side"
+            }
+          ]
+        },
+        {
+          "day": "thu",
+          "type": "running",
+          "title": "Easy run",
+          "instructions": "Keep the effort conversational and controlled.",
+          "plannedMiles": 4
+        },
+        {
+          "day": "fri",
+          "type": "running",
+          "title": "Easy run",
+          "instructions": "Keep the effort conversational and controlled.",
+          "plannedMiles": 2
+        },
+        {
+          "day": "fri",
+          "type": "strength",
+          "title": "Lift C — Mobility + Light Strength",
+          "instructions": "Focus: Freshen up. Keep clean reps and leave a little in reserve.",
+          "plannedMinutes": 45,
+          "exercises": [
+            {
+              "name": "Goblet squat, very light",
+              "prescription": "2 × 10"
+            },
+            {
+              "name": "Band row or cable row",
+              "prescription": "2 × 12–15"
+            },
+            {
+              "name": "Push-ups",
+              "prescription": "2 easy sets"
+            },
+            {
+              "name": "Suitcase carry",
+              "prescription": "2 × 30 sec / side"
+            },
+            {
+              "name": "Hip airplanes or balance drill",
+              "prescription": "2 × 5 / side"
+            },
+            {
+              "name": "Easy core circuit",
+              "prescription": "2 rounds"
+            }
+          ]
+        },
+        {
+          "day": "sat",
+          "type": "running",
+          "title": "Long easy run",
+          "instructions": "Keep the effort conversational and controlled.",
+          "plannedMiles": 7
+        }
+      ]
+    },
+    {
+      "weekNumber": 5,
+      "summary": "Build aerobic durability while keeping strength consistent.",
+      "workouts": [
+        {
+          "day": "mon",
+          "type": "running",
+          "title": "Easy run",
+          "instructions": "Keep the effort conversational and controlled.",
+          "plannedMiles": 4
+        },
+        {
+          "day": "mon",
+          "type": "strength",
+          "title": "Lift A — Legs + Core",
+          "instructions": "Focus: Split squat progression. Keep clean reps and leave a little in reserve.",
+          "plannedMinutes": 45,
+          "exercises": [
+            {
+              "name": "Front-foot elevated split squat",
+              "prescription": "3 × 8–10 / leg"
+            },
+            {
+              "name": "Romanian deadlift",
+              "prescription": "3 × 8–10"
+            },
+            {
+              "name": "Lateral lunges",
+              "prescription": "2–3 × 8–10 / side"
+            },
+            {
+              "name": "Calf raises",
+              "prescription": "3 × 15–20"
+            },
+            {
+              "name": "Hanging knee raises",
+              "prescription": "3 × 8–15"
+            },
+            {
+              "name": "Side plank with reach",
+              "prescription": "3 × 8–10 / side"
+            }
+          ]
+        },
+        {
+          "day": "tue",
+          "type": "running",
+          "title": "Easy run + strides",
+          "instructions": "Run conversationally, then finish with 4–6 relaxed strides.",
+          "plannedMiles": 5
+        },
+        {
+          "day": "wed",
+          "type": "strength",
+          "title": "Lift B — Upper + Core, Soccer-Friendly",
+          "instructions": "Focus: Bench + row. Keep clean reps and leave a little in reserve.",
+          "plannedMinutes": 45,
+          "exercises": [
+            {
+              "name": "Pull-ups or chin-ups",
+              "prescription": "4 × 3–8"
+            },
+            {
+              "name": "Bench press",
+              "prescription": "4 × 8–10"
+            },
+            {
+              "name": "Chest-supported row",
+              "prescription": "3 × 10–12"
+            },
+            {
+              "name": "DB curls",
+              "prescription": "3 × 10–15"
+            },
+            {
+              "name": "Face pulls",
+              "prescription": "2–3 × 15–20"
+            },
+            {
+              "name": "Hollow hold",
+              "prescription": "3 × 20–40 sec"
+            }
+          ]
+        },
+        {
+          "day": "thu",
+          "type": "running",
+          "title": "Easy run",
+          "instructions": "Keep the effort conversational and controlled.",
+          "plannedMiles": 5
+        },
+        {
+          "day": "fri",
+          "type": "running",
+          "title": "Easy run",
+          "instructions": "Keep the effort conversational and controlled.",
+          "plannedMiles": 2
+        },
+        {
+          "day": "fri",
+          "type": "strength",
+          "title": "Lift C — Full Body Light",
+          "instructions": "Focus: Athletic support. Keep clean reps and leave a little in reserve.",
+          "plannedMinutes": 45,
+          "exercises": [
+            {
+              "name": "Incline DB bench",
+              "prescription": "3 × 10–12"
+            },
+            {
+              "name": "Lat pulldown",
+              "prescription": "3 × 8–12"
+            },
+            {
+              "name": "Goblet squat",
+              "prescription": "2–3 × 10–12"
+            },
+            {
+              "name": "Single-leg RDL",
+              "prescription": "2 × 8–10 / leg"
+            },
+            {
+              "name": "Farmer carries",
+              "prescription": "4 × 30–60 sec"
+            },
+            {
+              "name": "Core circuit",
+              "prescription": "2–3 rounds"
+            }
+          ]
+        },
+        {
+          "day": "sat",
+          "type": "running",
+          "title": "Long easy run",
+          "instructions": "Keep the effort conversational and controlled.",
+          "plannedMiles": 10
+        }
+      ]
+    },
+    {
+      "weekNumber": 6,
+      "summary": "Build aerobic durability while keeping strength consistent.",
+      "workouts": [
+        {
+          "day": "mon",
+          "type": "running",
+          "title": "Easy run",
+          "instructions": "Keep the effort conversational and controlled.",
+          "plannedMiles": 4
+        },
+        {
+          "day": "mon",
+          "type": "strength",
+          "title": "Lift A — Legs + Core",
+          "instructions": "Focus: Posterior chain. Keep clean reps and leave a little in reserve.",
+          "plannedMinutes": 45,
+          "exercises": [
+            {
+              "name": "DB Romanian deadlift",
+              "prescription": "4 × 8"
+            },
+            {
+              "name": "Reverse lunges",
+              "prescription": "3 × 8–10 / leg"
+            },
+            {
+              "name": "Hip thrust or glute bridge",
+              "prescription": "3 × 10–15"
+            },
+            {
+              "name": "Tibialis raises or calf raises",
+              "prescription": "3 × 15–20"
+            },
+            {
+              "name": "Pallof press",
+              "prescription": "3 × 10–12 / side"
+            },
+            {
+              "name": "Plank",
+              "prescription": "3 × 60 sec"
+            }
+          ]
+        },
+        {
+          "day": "tue",
+          "type": "running",
+          "title": "Easy run + strides",
+          "instructions": "Run conversationally, then finish with 4–6 relaxed strides.",
+          "plannedMiles": 5
+        },
+        {
+          "day": "wed",
+          "type": "strength",
+          "title": "Lift B — Upper + Core, Soccer-Friendly",
+          "instructions": "Focus: Chin-up variation. Keep clean reps and leave a little in reserve.",
+          "plannedMinutes": 45,
+          "exercises": [
+            {
+              "name": "Chin-ups or assisted chin-ups",
+              "prescription": "5 easy submax sets"
+            },
+            {
+              "name": "DB bench press",
+              "prescription": "3 × 10–12"
+            },
+            {
+              "name": "One-arm DB row",
+              "prescription": "3 × 10–12 / side"
+            },
+            {
+              "name": "Push-ups",
+              "prescription": "2 × comfortable fatigue"
+            },
+            {
+              "name": "Hammer curls",
+              "prescription": "2–3 × 10–15"
+            },
+            {
+              "name": "Dead bug",
+              "prescription": "3 × 10 / side"
+            }
+          ]
+        },
+        {
+          "day": "thu",
+          "type": "running",
+          "title": "Easy run",
+          "instructions": "Keep the effort conversational and controlled.",
+          "plannedMiles": 5
+        },
+        {
+          "day": "fri",
+          "type": "running",
+          "title": "Easy run",
+          "instructions": "Keep the effort conversational and controlled.",
+          "plannedMiles": 3
+        },
+        {
+          "day": "fri",
+          "type": "strength",
+          "title": "Lift C — Full Body Light",
+          "instructions": "Focus: Core and carries. Keep clean reps and leave a little in reserve.",
+          "plannedMinutes": 45,
+          "exercises": [
+            {
+              "name": "Light bench press",
+              "prescription": "3 × 10–15"
+            },
+            {
+              "name": "Cable row",
+              "prescription": "3 × 10–12"
+            },
+            {
+              "name": "Step-ups, light",
+              "prescription": "2 × 8 / leg"
+            },
+            {
+              "name": "Suitcase carries",
+              "prescription": "3 × 30–45 sec / side"
+            },
+            {
+              "name": "Band pull-aparts",
+              "prescription": "2–3 × 15–20"
+            },
+            {
+              "name": "Side plank",
+              "prescription": "3 × 30–60 sec / side"
+            }
+          ]
+        },
+        {
+          "day": "sat",
+          "type": "running",
+          "title": "Long easy run",
+          "instructions": "Keep the effort conversational and controlled.",
+          "plannedMiles": 11
+        }
+      ]
+    },
+    {
+      "weekNumber": 7,
+      "summary": "Build aerobic durability while keeping strength consistent.",
+      "workouts": [
+        {
+          "day": "mon",
+          "type": "running",
+          "title": "Easy run",
+          "instructions": "Keep the effort conversational and controlled.",
+          "plannedMiles": 5
+        },
+        {
+          "day": "mon",
+          "type": "strength",
+          "title": "Lift A — Legs + Core",
+          "instructions": "Focus: Strong but controlled. Keep clean reps and leave a little in reserve.",
+          "plannedMinutes": 45,
+          "exercises": [
+            {
+              "name": "Bulgarian split squat",
+              "prescription": "4 × 6–8 / leg"
+            },
+            {
+              "name": "Romanian deadlift",
+              "prescription": "3 × 8"
+            },
+            {
+              "name": "Step-ups",
+              "prescription": "3 × 8 / leg"
+            },
+            {
+              "name": "Calf raises",
+              "prescription": "3 × 12–20"
+            },
+            {
+              "name": "Hanging knee raises",
+              "prescription": "3 × 10–15"
+            },
+            {
+              "name": "Pallof press",
+              "prescription": "3 × 10 / side"
+            }
+          ]
+        },
+        {
+          "day": "tue",
+          "type": "running",
+          "title": "Easy run + strides",
+          "instructions": "Run conversationally, then finish with 4–6 relaxed strides.",
+          "plannedMiles": 5
+        },
+        {
+          "day": "wed",
+          "type": "strength",
+          "title": "Lift B — Upper + Core, Soccer-Friendly",
+          "instructions": "Focus: Upper strength endurance. Keep clean reps and leave a little in reserve.",
+          "plannedMinutes": 45,
+          "exercises": [
+            {
+              "name": "Pull-ups",
+              "prescription": "4 × 4–8"
+            },
+            {
+              "name": "Bench press",
+              "prescription": "3 × 10–12"
+            },
+            {
+              "name": "Seated row",
+              "prescription": "3 × 10–12"
+            },
+            {
+              "name": "Incline push-ups or dips",
+              "prescription": "2–3 easy sets"
+            },
+            {
+              "name": "DB curls",
+              "prescription": "3 × 10–15"
+            },
+            {
+              "name": "Hollow hold",
+              "prescription": "3 × 20–40 sec"
+            }
+          ]
+        },
+        {
+          "day": "thu",
+          "type": "running",
+          "title": "Easy run",
+          "instructions": "Keep the effort conversational and controlled.",
+          "plannedMiles": 5
+        },
+        {
+          "day": "fri",
+          "type": "running",
+          "title": "Easy run",
+          "instructions": "Keep the effort conversational and controlled.",
+          "plannedMiles": 3
+        },
+        {
+          "day": "fri",
+          "type": "strength",
+          "title": "Lift C — Full Body Light",
+          "instructions": "Focus: Do not crush the long run. Keep clean reps and leave a little in reserve.",
+          "plannedMinutes": 45,
+          "exercises": [
+            {
+              "name": "Incline DB bench",
+              "prescription": "2–3 × 10–12"
+            },
+            {
+              "name": "Lat pulldown",
+              "prescription": "2–3 × 10–12"
+            },
+            {
+              "name": "Goblet squat, easy",
+              "prescription": "2 × 10"
+            },
+            {
+              "name": "Single-leg RDL, easy",
+              "prescription": "2 × 8 / leg"
+            },
+            {
+              "name": "Farmer carries",
+              "prescription": "3 × 30–45 sec"
+            },
+            {
+              "name": "Easy core circuit",
+              "prescription": "2 rounds"
+            }
+          ]
+        },
+        {
+          "day": "sat",
+          "type": "running",
+          "title": "Long easy run",
+          "instructions": "Keep the effort conversational and controlled.",
+          "plannedMiles": 12
+        }
+      ]
+    },
+    {
+      "weekNumber": 8,
+      "summary": "Build aerobic durability while keeping strength consistent.",
+      "workouts": [
+        {
+          "day": "mon",
+          "type": "running",
+          "title": "Easy run",
+          "instructions": "Keep the effort conversational and controlled.",
+          "plannedMiles": 4
+        },
+        {
+          "day": "mon",
+          "type": "strength",
+          "title": "Lift A — Legs + Core, Consolidate",
+          "instructions": "Focus: Clean reps. Keep clean reps and leave a little in reserve.",
+          "plannedMinutes": 45,
+          "exercises": [
+            {
+              "name": "Reverse lunges",
+              "prescription": "3 × 8–10 / leg"
+            },
+            {
+              "name": "Romanian deadlift",
+              "prescription": "3 × 8–10"
+            },
+            {
+              "name": "Goblet squat",
+              "prescription": "2–3 × 10–12"
+            },
+            {
+              "name": "Calf raises",
+              "prescription": "3 × 12–20"
+            },
+            {
+              "name": "Hanging knee raises",
+              "prescription": "3 × 8–15"
+            },
+            {
+              "name": "Side plank",
+              "prescription": "3 × 30–60 sec / side"
+            }
+          ]
+        },
+        {
+          "day": "tue",
+          "type": "running",
+          "title": "Easy run + strides",
+          "instructions": "Run conversationally, then finish with 4–6 relaxed strides.",
+          "plannedMiles": 5
+        },
+        {
+          "day": "wed",
+          "type": "strength",
+          "title": "Lift B — Upper + Core, Soccer-Friendly",
+          "instructions": "Focus: Repeat favorites. Keep clean reps and leave a little in reserve.",
+          "plannedMinutes": 45,
+          "exercises": [
+            {
+              "name": "Pull-ups or assisted pull-ups",
+              "prescription": "4 × 3–8"
+            },
+            {
+              "name": "Bench press or DB bench",
+              "prescription": "3 × 8–12"
+            },
+            {
+              "name": "One-arm DB row",
+              "prescription": "3 × 8–12 / side"
+            },
+            {
+              "name": "Push-ups",
+              "prescription": "2 × comfortable fatigue"
+            },
+            {
+              "name": "Hammer curls",
+              "prescription": "2–3 × 10–15"
+            },
+            {
+              "name": "Dead bug",
+              "prescription": "3 × 8–12 / side"
+            }
+          ]
+        },
+        {
+          "day": "thu",
+          "type": "running",
+          "title": "Easy run",
+          "instructions": "Keep the effort conversational and controlled.",
+          "plannedMiles": 5
+        },
+        {
+          "day": "fri",
+          "type": "running",
+          "title": "Easy run",
+          "instructions": "Keep the effort conversational and controlled.",
+          "plannedMiles": 3
+        },
+        {
+          "day": "fri",
+          "type": "strength",
+          "title": "Lift C — Full Body Light",
+          "instructions": "Focus: Base phase finish. Keep clean reps and leave a little in reserve.",
+          "plannedMinutes": 45,
+          "exercises": [
+            {
+              "name": "Light incline press",
+              "prescription": "3 × 10–12"
+            },
+            {
+              "name": "Lat pulldown or easy pull-ups",
+              "prescription": "3 × 8–10"
+            },
+            {
+              "name": "Step-ups, light",
+              "prescription": "2 × 8 / leg"
+            },
+            {
+              "name": "Suitcase carries",
+              "prescription": "3 × 30–45 sec / side"
+            },
+            {
+              "name": "Face pulls",
+              "prescription": "2–3 × 15–20"
+            },
+            {
+              "name": "Core circuit",
+              "prescription": "2 rounds"
+            }
+          ]
+        },
+        {
+          "day": "sat",
+          "type": "running",
+          "title": "Long easy run",
+          "instructions": "Keep the effort conversational and controlled.",
+          "plannedMiles": 13
+        }
+      ]
+    }
+  ]
+}

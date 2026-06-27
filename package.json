@@ -1,0 +1,36 @@
+{
+  "name": "training-plan-tracker",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit -p tsconfig.app.json && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:rules": "firebase emulators:exec --project demo-training-plan-tracker --only firestore \"vitest run --config vitest.rules.config.ts\""
+  },
+  "dependencies": {
+    "date-fns": "^4.1.0",
+    "firebase": "^11.10.0",
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "firebase-tools": "^14.4.0",
+    "jsdom": "^25.0.1",
+    "typescript": "~5.7.2",
+    "vite": "^5.4.21",
+    "vitest": "^2.1.8"
+  },
+  "packageManager": "pnpm@11.7.0"
+}

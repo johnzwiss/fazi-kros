@@ -1,0 +1,12 @@
+node_modules
+.pnpm-store
+dist
+/work
+/outputs
+.env
+.env.local
+.firebase
+firebase-debug.log
+firestore-debug.log
+*.tsbuildinfo
+.DS_Store

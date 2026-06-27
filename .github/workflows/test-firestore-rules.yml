@@ -1,0 +1,45 @@
+name: Test Firestore security rules
+
+on:
+  pull_request:
+    paths:
+      - firestore.rules
+      - firebase.json
+      - src/test/firestore.rules.test.ts
+      - vitest.rules.config.ts
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+  push:
+    branches: [main]
+    paths:
+      - firestore.rules
+      - firebase.json
+      - src/test/firestore.rules.test.ts
+      - vitest.rules.config.ts
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:rules

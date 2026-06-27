@@ -1,0 +1,50 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null && request.auth.token.email != null && request.auth.token.email_verified == true;
+    }
+
+    function isOwner() {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    match /admins/{userId} {
+      allow get: if signedIn() && request.auth.uid == userId;
+      allow list, create, update, delete: if false;
+    }
+
+    function isAllowed() {
+      return isOwner() || (
+        signedIn() &&
+        exists(/databases/$(database)/documents/allowedEmails/$(request.auth.token.email))
+      );
+    }
+
+    match /allowedEmails/{email} {
+      allow get: if signedIn() && (isOwner() || request.auth.token.email == email);
+      allow list, create, update, delete: if isOwner();
+    }
+
+    match /templates/{templateId} {
+      allow read: if isAllowed();
+      allow create, update, delete: if isOwner();
+    }
+
+    match /users/{userId} {
+      allow read, create, update, delete: if isAllowed() && request.auth.uid == userId;
+
+      match /{document=**} {
+        allow read, create, update, delete: if isAllowed() && request.auth.uid == userId;
+      }
+    }
+
+    match /sharedProfiles/{email} {
+      allow read: if isAllowed();
+      allow create, update: if isAllowed() && request.auth.token.email == email;
+      allow delete: if isOwner() || (isAllowed() && request.auth.token.email == email);
+    }
+  }
+}
