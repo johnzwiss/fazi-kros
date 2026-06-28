@@ -116,7 +116,7 @@ button.nav-link:hover, button.nav-link.active { background: var(--sage); color: 
 .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 14px 16px; box-shadow: none; }
 .toolbar > div:first-child { display: grid; }
 .toolbar span { color: var(--muted); font-size: .78rem; }
-.days-grid { display: grid; grid-template-columns: repeat(7, minmax(160px, 1fr)); gap: 11px; overflow-x: auto; padding: 2px 2px 12px; }
+.days-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); align-items: start; gap: 11px; overflow: visible; padding: 2px 2px 12px; }
 .day-card { min-height: 250px; padding: 13px; background: var(--paper); border: 1px solid var(--line); border-radius: 19px; box-shadow: 0 5px 18px rgba(30, 45, 35, .04); }
 .day-card > header { display: flex; align-items: start; justify-content: space-between; gap: 8px; padding: 2px 2px 11px; border-bottom: 1px solid #ece9df; }
 .day-card > header p { margin: 0; font-size: .86rem; font-weight: 800; }
@@ -146,7 +146,8 @@ button.workout-summary:hover { background: transparent; transform: none; }
 .workout-details { padding: 2px 9px 10px 35px; }
 .workout-details p { margin: 2px 0 8px; color: var(--muted); font-size: .7rem; }
 .exercise-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; padding: 5px 0; border-top: 1px solid #e9e6dc; font-size: .66rem; }
-.exercise-row strong { color: var(--muted); text-align: right; }
+.exercise-row span, .exercise-row strong { min-width: 0; overflow-wrap: anywhere; }
+.exercise-row strong { max-width: 150px; color: var(--muted); text-align: right; }
 .actual-miles { display: flex; align-items: end; justify-content: space-between; gap: 5px; padding: 8px 8px 8px 35px; border-top: 1px solid #dbe4d7; }
 .actual-miles label { gap: 2px; font-size: .62rem; }
 .actual-miles input { width: 67px; padding: 4px 6px; border-radius: 7px; font-size: .72rem; }
@@ -257,10 +258,6 @@ button.workout-summary:hover { background: transparent; transform: none; }
   .summary-grid { grid-template-columns: 1fr 1fr; }
   .progress-card { grid-column: 1 / -1; }
   .members-grid { grid-template-columns: repeat(2, 1fr); }
-}
-
-@media (max-width: 1220px) and (min-width: 761px) {
-  .days-grid { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); overflow: visible; }
 }
 
 @media (max-width: 760px) {
