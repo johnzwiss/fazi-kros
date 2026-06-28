@@ -259,6 +259,10 @@ button.workout-summary:hover { background: transparent; transform: none; }
   .members-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
+@media (max-width: 1220px) and (min-width: 761px) {
+  .days-grid { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); overflow: visible; }
+}
+
 @media (max-width: 760px) {
   .app-header { height: 64px; display: flex; justify-content: space-between; padding: 0 16px; }
   .desktop-nav { display: none; }
