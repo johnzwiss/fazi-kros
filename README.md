@@ -6,6 +6,7 @@ A small private training app for combined running and strength plans. The interf
 
 - One active plan per member, with archived and completed history.
 - Weekly run/strength checklist, real dates, mileage overrides, progress, and notes.
+- Optional one-click Google Calendar sync with links back to each training day.
 - Private profiles with opt-in aggregate sharing.
 - Owner-only invitation and template administration.
 - Strict, versioned JSON imports plus a copyable AI-generation prompt.
@@ -52,6 +53,17 @@ The Firebase web configuration is not a server secret. Owner identity lives in t
 5. Open **Plans**, select a Monday, and start the plan.
 
 Template copies are snapshots. Editing or archiving a shared template never rewrites a member's existing training plan.
+
+## Google Calendar setup
+
+Calendar sync reuses the existing Firebase Google sign-in and requests the narrow `calendar.app.created` scope only when a member presses **Connect & sync**.
+
+1. In the Google Cloud project connected to Firebase, open **APIs & Services → Library** and enable **Google Calendar API**.
+2. Open **Google Auth Platform → Data Access** and add `https://www.googleapis.com/auth/calendar.app.created`.
+3. Confirm the OAuth web client allows `http://localhost:5173`, `http://127.0.0.1:5173`, and `https://johnzwiss.github.io` as authorized JavaScript origins. Origins do not include the `/fazi-kros/` path.
+4. While the OAuth app is in Testing, add each invited member as an OAuth test user.
+
+Google access tokens stay in browser memory and are never stored in Firestore. Sync is user-triggered; the app creates a dedicated secondary calendar and cannot inspect or edit unrelated calendars.
 
 ## Firestore model
 

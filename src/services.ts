@@ -18,6 +18,7 @@ import {
 } from "firebase/firestore";
 import { dateForWorkout, planEndDate } from "./date";
 import { db } from "./firebase";
+import type { CalendarWorkoutUpdate } from "./googleCalendar";
 import { applyDelta, workoutCompletionDelta } from "./stats";
 import {
   EMPTY_STATS,
@@ -128,6 +129,48 @@ export async function saveProfile(uid: string, existing: UserProfile, updates: P
   }
   await batch.commit();
   return next;
+}
+
+export async function markCalendarNeedsSync(uid: string) {
+  await updateDoc(doc(requireDb(), "users", uid), {
+    "googleCalendar.needsSync": true,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function saveCalendarSyncState(
+  uid: string,
+  planId: string | null,
+  calendarId: string,
+  calendarName: string,
+  workoutUpdates: CalendarWorkoutUpdate[],
+  needsSync = false,
+) {
+  const database = requireDb();
+  const batch = writeBatch(database);
+  batch.set(doc(database, "users", uid), {
+    googleCalendar: { calendarId, calendarName, needsSync, lastSyncedAt: serverTimestamp() },
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+  if (planId) {
+    workoutUpdates.forEach((update) => batch.set(
+      doc(database, "users", uid, "plans", planId, "workouts", update.workoutId),
+      {
+        googleCalendarEventId: update.eventId,
+        googleCalendarFingerprint: update.fingerprint,
+        googleCalendarSyncedAt: serverTimestamp(),
+      },
+      { merge: true },
+    ));
+  }
+  await batch.commit();
+}
+
+export async function clearCalendarIntegration(uid: string) {
+  await updateDoc(doc(requireDb(), "users", uid), {
+    googleCalendar: deleteField(),
+    updatedAt: serverTimestamp(),
+  });
 }
 
 export async function loadTemplates(includeArchived = false): Promise<PlanTemplate[]> {

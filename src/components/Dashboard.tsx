@@ -10,6 +10,7 @@ import {
   PartyPopper,
   Pencil,
   Plus,
+  RefreshCw,
   RotateCcw,
 } from "lucide-react";
 import {
@@ -26,6 +27,7 @@ import {
 } from "date-fns";
 import { useEffect, useMemo, useState } from "react";
 import { currentWeekNumber, dateForWorkout, dayKeyForDate, prettyDate, weekNumberForDate } from "../date";
+import type { CalendarView } from "../deepLink";
 import { planProgress } from "../stats";
 import { DAYS, type DayKey, type TemplateWorkout, type UserPlan, type UserWorkout } from "../types";
 import { EmptyState, ProgressBar } from "./Layout";
@@ -33,7 +35,6 @@ import { WorkoutEditor } from "./WorkoutEditor";
 
 const DAY_NAMES: Record<DayKey, string> = { mon: "Monday", tue: "Tuesday", wed: "Wednesday", thu: "Thursday", fri: "Friday", sat: "Saturday", sun: "Sunday" };
 const CALENDAR_DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-type CalendarView = "day" | "week" | "month";
 
 interface DashboardProps {
   plan: UserPlan | null;
@@ -41,6 +42,13 @@ interface DashboardProps {
   note: string;
   restDays: Partial<Record<DayKey, boolean>>;
   busy?: boolean;
+  initialDate?: string;
+  initialView?: CalendarView;
+  readOnly?: boolean;
+  calendarConnected?: boolean;
+  calendarNeedsSync?: boolean;
+  calendarBusy?: boolean;
+  calendarMessage?: string;
   onOpenLibrary: () => void;
   onWeekChange: (week: number) => void;
   onToggle: (workout: UserWorkout, complete: boolean, actualMiles?: number) => Promise<void>;
@@ -50,13 +58,15 @@ interface DashboardProps {
   onBulk: (workouts: UserWorkout[], complete: boolean) => Promise<void>;
   onNote: (value: string) => Promise<void>;
   onFinish: (completed: boolean) => Promise<void>;
+  onSyncCalendar?: () => Promise<void>;
+  onNavigate?: (planId: string, date: string, view: CalendarView) => void;
 }
 
-export function Dashboard({ plan, workouts, note, restDays, busy, onOpenLibrary, onWeekChange, onToggle, onAdd, onEdit, onToggleRest, onBulk, onNote, onFinish }: DashboardProps) {
+export function Dashboard({ plan, workouts, note, restDays, busy, initialDate, initialView, readOnly, calendarConnected, calendarNeedsSync, calendarBusy, calendarMessage, onOpenLibrary, onWeekChange, onToggle, onAdd, onEdit, onToggleRest, onBulk, onNote, onFinish, onSyncCalendar, onNavigate }: DashboardProps) {
   const today = format(new Date(), "yyyy-MM-dd");
-  const [calendarView, setCalendarView] = useState<CalendarView>("week");
-  const [selectedDate, setSelectedDate] = useState(today);
-  const [monthDate, setMonthDate] = useState(startOfMonth(parseISO(today)));
+  const [calendarView, setCalendarView] = useState<CalendarView>(initialView || "week");
+  const [selectedDate, setSelectedDate] = useState(initialDate || today);
+  const [monthDate, setMonthDate] = useState(startOfMonth(parseISO(initialDate || today)));
   const [week, setWeek] = useState(plan ? currentWeekNumber(plan.startDate, plan.weekCount) : 1);
   const [noteDraft, setNoteDraft] = useState(note);
   const [editing, setEditing] = useState<UserWorkout | null>(null);
@@ -66,15 +76,22 @@ export function Dashboard({ plan, workouts, note, restDays, busy, onOpenLibrary,
 
   useEffect(() => setNoteDraft(note), [note]);
   useEffect(() => {
-    setCalendarView("week");
-    setSelectedDate(today);
-    setMonthDate(startOfMonth(parseISO(today)));
+    const nextDate = initialDate || today;
+    setCalendarView(initialView || "week");
+    setSelectedDate(nextDate);
+    setMonthDate(startOfMonth(parseISO(nextDate)));
     if (plan) {
-      const next = currentWeekNumber(plan.startDate, plan.weekCount);
+      const next = nextDate >= plan.startDate && nextDate <= plan.endDate
+        ? weekNumberForDate(plan.startDate, plan.weekCount, nextDate)
+        : currentWeekNumber(plan.startDate, plan.weekCount);
       setWeek(next);
       onWeekChange(next);
     }
-  }, [plan?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [plan?.id, initialDate, initialView]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (plan) onNavigate?.(plan.id, selectedDate, calendarView);
+  }, [calendarView, onNavigate, plan, selectedDate]);
 
   if (!plan) {
     return <EmptyState icon={<Footprints size={42} />} title="Your next plan starts here" body="Choose a plan from the library, pick a Monday, and your weekly tracker will be ready." action={<button onClick={onOpenLibrary}>Browse plans</button>} />;
@@ -142,11 +159,15 @@ export function Dashboard({ plan, workouts, note, restDays, busy, onOpenLibrary,
 
   return <div className="page-stack">
     <section className="page-heading dashboard-heading">
-      <div><p className="eyebrow">Active plan</p><h1>{plan.title}</h1><p>{plan.description}</p></div>
-      <div className="week-picker"><CalendarDays size={18} /><select value={week} onChange={(event) => selectPlanWeek(Number(event.target.value))}>
-        {Array.from({ length: plan.weekCount }, (_, index) => <option key={index + 1} value={index + 1}>Plan week {index + 1}</option>)}
-      </select></div>
+      <div><p className="eyebrow">{readOnly ? "Plan history" : "Active plan"}</p><h1>{plan.title}</h1><p>{plan.description}</p></div>
+      <div className="dashboard-heading-actions">
+        {!readOnly && onSyncCalendar && <button className={calendarNeedsSync ? "calendar-sync-button needs-sync" : "calendar-sync-button"} disabled={busy || calendarBusy} onClick={onSyncCalendar}><RefreshCw className={calendarBusy ? "spin" : ""} size={17} /> {calendarBusy ? "Syncing…" : calendarConnected ? "Sync calendar" : "Connect & sync"}</button>}
+        <div className="week-picker"><CalendarDays size={18} /><select value={week} onChange={(event) => selectPlanWeek(Number(event.target.value))}>
+          {Array.from({ length: plan.weekCount }, (_, index) => <option key={index + 1} value={index + 1}>Plan week {index + 1}</option>)}
+        </select></div>
+      </div>
     </section>
+    {calendarMessage && !readOnly && <div className="calendar-status" role="status">{calendarMessage}</div>}
 
     <section className="calendar-toolbar card">
       <div className="view-switch" aria-label="Calendar view">
@@ -170,19 +191,19 @@ export function Dashboard({ plan, workouts, note, restDays, busy, onOpenLibrary,
     </section>
 
     {calendarView !== "month" && <section className="toolbar card">
-      <div><strong>{calendarView === "day" ? prettyDate(selectedDate, "EEEE, MMMM d") : "Weekly checklist"}</strong><span>Drag the grip to move a workout, or use its pencil to edit.</span></div>
-      {calendarView === "week" && <div className="button-row">
+      <div><strong>{calendarView === "day" ? prettyDate(selectedDate, "EEEE, MMMM d") : "Weekly checklist"}</strong><span>{readOnly ? "Historical workouts are read-only." : "Drag the grip to move a workout, or use its pencil to edit."}</span></div>
+      {!readOnly && calendarView === "week" && <div className="button-row">
         <button className="secondary small-button" disabled={busy || !checklistCount} onClick={() => setVisibleComplete(false)}><RotateCcw size={15} /> Clear</button>
         <button className="small-button" disabled={busy || !checklistCount} onClick={() => setVisibleComplete(true)}><Check size={15} /> Mark week complete</button>
       </div>}
     </section>}
 
     {calendarView === "week" && <section className="days-grid">
-      {weekDates.map((date) => <DayCard key={date} date={date} plan={plan} today={today} items={weekWorkouts.filter((workout) => workout.scheduledDate === date)} restChecked={Boolean(restDays[dayKeyForDate(date)])} busy={busy} dragged={dragged} dropDay={dropDay} onToggle={onToggle} onAdd={setAddingDate} onEdit={setEditing} onToggleRest={onToggleRest} onDragStart={setDragged} onDragEnd={() => { setDragged(null); setDropDay(null); }} onDragOver={setDropDay} onDrop={dropWorkout} />)}
+      {weekDates.map((date) => <DayCard key={date} date={date} plan={plan} today={today} items={weekWorkouts.filter((workout) => workout.scheduledDate === date)} restChecked={Boolean(restDays[dayKeyForDate(date)])} busy={busy} readOnly={readOnly} dragged={dragged} dropDay={dropDay} onToggle={onToggle} onAdd={setAddingDate} onEdit={setEditing} onToggleRest={onToggleRest} onDragStart={setDragged} onDragEnd={() => { setDragged(null); setDropDay(null); }} onDragOver={setDropDay} onDrop={dropWorkout} />)}
     </section>}
 
     {calendarView === "day" && <section className="day-view">
-      <DayCard date={selectedDate} plan={plan} today={today} items={workouts.filter((workout) => workout.scheduledDate === selectedDate)} restChecked={Boolean(restDays[dayKeyForDate(selectedDate)])} busy={busy} dragged={dragged} dropDay={dropDay} onToggle={onToggle} onAdd={setAddingDate} onEdit={setEditing} onToggleRest={onToggleRest} onDragStart={setDragged} onDragEnd={() => { setDragged(null); setDropDay(null); }} onDragOver={setDropDay} onDrop={dropWorkout} />
+      <DayCard date={selectedDate} plan={plan} today={today} items={workouts.filter((workout) => workout.scheduledDate === selectedDate)} restChecked={Boolean(restDays[dayKeyForDate(selectedDate)])} busy={busy} readOnly={readOnly} dragged={dragged} dropDay={dropDay} onToggle={onToggle} onAdd={setAddingDate} onEdit={setEditing} onToggleRest={onToggleRest} onDragStart={setDragged} onDragEnd={() => { setDragged(null); setDropDay(null); }} onDragOver={setDropDay} onDrop={dropWorkout} />
     </section>}
 
     {calendarView === "month" && <section className="month-card card">
@@ -199,7 +220,7 @@ export function Dashboard({ plan, workouts, note, restDays, busy, onOpenLibrary,
       })}</div>
     </section>}
 
-    {calendarView !== "month" && selectedInPlan && <section className="content-grid">
+    {!readOnly && calendarView !== "month" && selectedInPlan && <section className="content-grid">
       <article className="card notes-card">
         <div className="section-title"><NotebookPen size={20} /><div><h2>Plan week {week} notes</h2><p>Energy, aches, wins, weather—the useful little truths.</p></div></div>
         <textarea value={noteDraft} onChange={(event) => setNoteDraft(event.target.value)} onBlur={() => onNote(noteDraft)} placeholder="How did this week feel?" />
@@ -208,10 +229,10 @@ export function Dashboard({ plan, workouts, note, restDays, busy, onOpenLibrary,
       <article className="card guidance-card"><h2>Plan guidance</h2><ul>{plan.guidance.map((item, index) => <li key={index}>{item}</li>)}</ul></article>
     </section>}
 
-    <section className="card finish-card">
+    {!readOnly && <section className="card finish-card">
       <div><PartyPopper size={22} /><div><h2>Done with this plan?</h2><p>Complete it for your history, or archive it if your training changed.</p></div></div>
       <div className="button-row"><button className="secondary" onClick={() => onFinish(false)}>Archive plan</button><button onClick={() => onFinish(true)}>Finish plan</button></div>
-    </section>
+    </section>}
 
     {editing && <WorkoutEditor workout={editing} onClose={() => setEditing(null)} onSave={(changes) => onEdit(editing, changes)} />}
     {addingDate && <WorkoutEditor
@@ -241,6 +262,7 @@ interface DayCardProps {
   items: UserWorkout[];
   restChecked: boolean;
   busy?: boolean;
+  readOnly?: boolean;
   dragged: UserWorkout | null;
   dropDay: DayKey | null;
   onToggle: DashboardProps["onToggle"];
@@ -253,20 +275,20 @@ interface DayCardProps {
   onDrop: (day: DayKey) => Promise<void>;
 }
 
-function DayCard({ date, plan, today, items, restChecked, busy, dragged, dropDay, onToggle, onAdd, onEdit, onToggleRest, onDragStart, onDragEnd, onDragOver, onDrop }: DayCardProps) {
+function DayCard({ date, plan, today, items, restChecked, busy, readOnly, dragged, dropDay, onToggle, onAdd, onEdit, onToggleRest, onDragStart, onDragEnd, onDragOver, onDrop }: DayCardProps) {
   const day = dayKeyForDate(date);
   const inPlan = date >= plan.startDate && date <= plan.endDate;
   return <article
     className={["day-card", date === today ? "today" : "", dropDay === day ? "drop-target" : ""].filter(Boolean).join(" ")}
-    onDragOver={(event) => { if (dragged && inPlan) { event.preventDefault(); onDragOver(day); } }}
-    onDrop={(event) => { event.preventDefault(); if (inPlan) void onDrop(day); }}
+    onDragOver={(event) => { if (!readOnly && dragged && inPlan) { event.preventDefault(); onDragOver(day); } }}
+    onDrop={(event) => { event.preventDefault(); if (!readOnly && inPlan) void onDrop(day); }}
   >
-    <header><div><p>{DAY_NAMES[day]}{date === today && <span className="today-pill">Today</span>}</p><span>{prettyDate(date, "MMM d")}</span></div><div className="day-header-actions">{items.length > 0 && <span className="day-count">{items.filter((item) => item.completed).length}/{items.length}</span>}{inPlan && <button type="button" className="day-add-button" disabled={busy} onClick={() => onAdd(date)} aria-label={`Add workout on ${prettyDate(date, "MMMM d")}`} title="Add workout"><Plus size={15} /></button>}</div></header>
-    {items.length ? items.map((workout) => <WorkoutItem key={workout.id} workout={workout} disabled={busy} onToggle={onToggle} onEdit={() => onEdit(workout)} onDragStart={() => onDragStart(workout)} onDragEnd={onDragEnd} />) : inPlan ? <label className="rest-day-check"><input type="checkbox" checked={restChecked} disabled={busy} onChange={(event) => onToggleRest(day, event.target.checked)} /><span className="custom-check">{restChecked && <Check size={14} />}</span><span><strong>Rest / walk / mobility</strong><small>Recovery counts, too.</small></span></label> : <div className="outside-plan-day">No plan scheduled for this date.</div>}
+    <header><div><p>{DAY_NAMES[day]}{date === today && <span className="today-pill">Today</span>}</p><span>{prettyDate(date, "MMM d")}</span></div><div className="day-header-actions">{items.length > 0 && <span className="day-count">{items.filter((item) => item.completed).length}/{items.length}</span>}{!readOnly && inPlan && <button type="button" className="day-add-button" disabled={busy} onClick={() => onAdd(date)} aria-label={`Add workout on ${prettyDate(date, "MMMM d")}`} title="Add workout"><Plus size={15} /></button>}</div></header>
+    {items.length ? items.map((workout) => <WorkoutItem key={workout.id} workout={workout} disabled={busy} readOnly={readOnly} onToggle={onToggle} onEdit={() => onEdit(workout)} onDragStart={() => onDragStart(workout)} onDragEnd={onDragEnd} />) : inPlan ? <label className={readOnly ? "rest-day-check read-only" : "rest-day-check"}><input type="checkbox" checked={restChecked} disabled={busy || readOnly} onChange={(event) => onToggleRest(day, event.target.checked)} /><span className="custom-check">{restChecked && <Check size={14} />}</span><span><strong>Rest / walk / mobility</strong><small>Recovery counts, too.</small></span></label> : <div className="outside-plan-day">No plan scheduled for this date.</div>}
   </article>;
 }
 
-function WorkoutItem({ workout, disabled, onToggle, onEdit, onDragStart, onDragEnd }: { workout: UserWorkout; disabled?: boolean; onToggle: DashboardProps["onToggle"]; onEdit: () => void; onDragStart: () => void; onDragEnd: () => void }) {
+function WorkoutItem({ workout, disabled, readOnly, onToggle, onEdit, onDragStart, onDragEnd }: { workout: UserWorkout; disabled?: boolean; readOnly?: boolean; onToggle: DashboardProps["onToggle"]; onEdit: () => void; onDragStart: () => void; onDragEnd: () => void }) {
   const [expanded, setExpanded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [miles, setMiles] = useState(String(workout.actualMiles ?? workout.plannedMiles ?? ""));
@@ -280,18 +302,18 @@ function WorkoutItem({ workout, disabled, onToggle, onEdit, onDragStart, onDragE
   }
   return <div className={workout.completed ? "workout-item complete" : "workout-item"}>
     <div className="workout-top">
-      <label className={saving ? "check-label saving" : "check-label"}><input type="checkbox" checked={workout.completed} disabled={disabled || saving} onChange={(event) => toggle(event.target.checked)} /><span className="custom-check">{workout.completed && <Check size={14} />}</span></label>
+      <label className={saving ? "check-label saving" : "check-label"}><input type="checkbox" checked={workout.completed} disabled={disabled || saving || readOnly} onChange={(event) => toggle(event.target.checked)} /><span className="custom-check">{workout.completed && <Check size={14} />}</span></label>
       <button className="workout-summary" onClick={() => hasDetails && setExpanded((value) => !value)}>
         <span className={`type-dot ${workout.type}`} />
         <span><strong>{workout.title}</strong><small>{workout.type.replace("_", " ")}{meta ? ` · ${meta}` : ""}</small></span>
         {hasDetails && <ChevronDown className={expanded ? "rotated" : ""} size={17} />}
       </button>
-      <div className="workout-tile-actions">
+      {!readOnly && <div className="workout-tile-actions">
         <button type="button" className="tile-icon drag-handle" draggable={!disabled} onDragStart={(event) => { event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("text/plain", workout.id); onDragStart(); }} onDragEnd={onDragEnd} aria-label={`Move ${workout.title}`} title="Drag to another day"><GripVertical size={17} /></button>
         <button type="button" className="tile-icon" onClick={onEdit} aria-label={`Edit ${workout.title}`} title="Edit workout"><Pencil size={15} /></button>
-      </div>
+      </div>}
     </div>
     {expanded && <div className="workout-details">{workout.instructions && <p>{workout.instructions}</p>}{workout.exercises?.map((exercise, index) => <div className="exercise-row" key={index}><span>{exercise.name}</span><strong>{exercise.prescription}</strong></div>)}</div>}
-    {workout.completed && workout.type === "running" && <div className="actual-miles"><label>Actual miles <input type="number" min="0" step="0.1" value={miles} onChange={(event) => setMiles(event.target.value)} /></label><button className="text-button" onClick={() => onToggle(workout, true, Number(miles))}>Update</button></div>}
+    {!readOnly && workout.completed && workout.type === "running" && <div className="actual-miles"><label>Actual miles <input type="number" min="0" step="0.1" value={miles} onChange={(event) => setMiles(event.target.value)} /></label><button className="text-button" onClick={() => onToggle(workout, true, Number(miles))}>Update</button></div>}
   </div>;
 }
