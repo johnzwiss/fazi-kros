@@ -13,6 +13,7 @@ import { auth, firebaseConfigured } from "./firebase";
 import { planTemplateSchema } from "./schema";
 import {
   activateTemplate,
+  addWorkoutToPlan,
   addInvite,
   archiveTemplate,
   checkAccess,
@@ -23,6 +24,7 @@ import {
   loadMembers,
   loadPlans,
   loadProfile,
+  loadRestDays,
   loadTemplates,
   loadWeekNote,
   loadWorkouts,
@@ -30,13 +32,17 @@ import {
   removeInvite,
   saveProfile,
   saveWeekNote,
+  setRestDayCompletion,
   setWorkoutCompletion,
+  updateWorkoutDefinition,
 } from "./services";
 import { applyDelta, workoutCompletionDelta } from "./stats";
 import {
   EMPTY_STATS,
+  type DayKey,
   type PlanTemplate,
   type SharedProfile,
+  type TemplateWorkout,
   type UserPlan,
   type UserProfile,
   type UserWorkout,
@@ -143,6 +149,52 @@ function optimisticWorkoutState(
   };
 }
 
+function editedWorkoutState(current: AppState, workout: UserWorkout, changes: Partial<TemplateWorkout>): AppState {
+  if (!current.activePlan) return current;
+  const nextWorkout: UserWorkout = {
+    ...workout,
+    ...changes,
+    scheduledDate: changes.day
+      ? dateForWorkout(current.activePlan.startDate, workout.weekNumber, changes.day)
+      : workout.scheduledDate,
+  };
+  if (Object.hasOwn(changes, "instructions") && !changes.instructions) delete nextWorkout.instructions;
+  if (Object.hasOwn(changes, "plannedMiles") && changes.plannedMiles == null) delete nextWorkout.plannedMiles;
+  if (Object.hasOwn(changes, "plannedMinutes") && changes.plannedMinutes == null) delete nextWorkout.plannedMinutes;
+  if (Object.hasOwn(changes, "exercises") && !changes.exercises?.length) delete nextWorkout.exercises;
+
+  const plannedMilesDelta = (nextWorkout.plannedMiles ?? 0) - (workout.plannedMiles ?? 0);
+  const nextPlan = {
+    ...current.activePlan,
+    plannedMiles: Math.max(0, Number((current.activePlan.plannedMiles + plannedMilesDelta).toFixed(2))),
+  };
+  const matchesWorkout = (item: UserWorkout) => item.id === workout.id && item.scheduledDate === workout.scheduledDate;
+  return {
+    ...current,
+    activePlan: nextPlan,
+    plans: current.plans.map((plan) => plan.id === nextPlan.id ? nextPlan : plan),
+    activeWorkouts: current.activeWorkouts.map((item) => matchesWorkout(item) ? nextWorkout : item),
+    allWorkouts: current.allWorkouts.map((item) => matchesWorkout(item) ? nextWorkout : item),
+  };
+}
+
+function addedWorkoutState(current: AppState, workout: UserWorkout): AppState {
+  if (!current.activePlan) return current;
+  const nextPlan = {
+    ...current.activePlan,
+    totalWorkouts: current.activePlan.totalWorkouts + 1,
+    plannedMiles: Number((current.activePlan.plannedMiles + (workout.plannedMiles ?? 0)).toFixed(2)),
+  };
+  const byDate = (a: UserWorkout, b: UserWorkout) => a.scheduledDate.localeCompare(b.scheduledDate);
+  return {
+    ...current,
+    activePlan: nextPlan,
+    plans: current.plans.map((plan) => plan.id === nextPlan.id ? nextPlan : plan),
+    activeWorkouts: [...current.activeWorkouts, workout].sort(byDate),
+    allWorkouts: [...current.allWorkouts, workout].sort(byDate),
+  };
+}
+
 function LiveApp({ user, onSignOut }: { user: User; onSignOut: () => Promise<void> }) {
   const [view, setView] = useState<View>("dashboard");
   const [state, setState] = useState<AppState | null>(null);
@@ -150,6 +202,7 @@ function LiveApp({ user, onSignOut }: { user: User; onSignOut: () => Promise<voi
   const [owner, setOwner] = useState(false);
   const [week, setWeek] = useState(1);
   const [note, setNote] = useState("");
+  const [restDays, setRestDays] = useState<Partial<Record<DayKey, boolean>>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   async function refresh(asOwner = owner) {
@@ -167,7 +220,14 @@ function LiveApp({ user, onSignOut }: { user: User; onSignOut: () => Promise<voi
     ]);
     const selectedWeek = activePlan ? currentWeekNumber(activePlan.startDate, activePlan.weekCount) : 1;
     setWeek(selectedWeek);
-    setNote(activePlan ? await loadWeekNote(user.uid, activePlan.id, selectedWeek) : "");
+    const [weekNote, savedRestDays] = activePlan
+      ? await Promise.all([
+        loadWeekNote(user.uid, activePlan.id, selectedWeek),
+        loadRestDays(user.uid, activePlan.id, selectedWeek),
+      ])
+      : ["", {}];
+    setNote(weekNote);
+    setRestDays(savedRestDays);
     setState({ profile, templates, plans, activePlan, activeWorkouts, allWorkouts, members, invites });
   }
 
@@ -191,7 +251,14 @@ function LiveApp({ user, onSignOut }: { user: User; onSignOut: () => Promise<voi
 
   async function selectWeek(next: number) {
     setWeek(next);
-    if (state?.activePlan) setNote(await loadWeekNote(user.uid, state.activePlan.id, next));
+    if (state?.activePlan) {
+      const [weekNote, savedRestDays] = await Promise.all([
+        loadWeekNote(user.uid, state.activePlan.id, next),
+        loadRestDays(user.uid, state.activePlan.id, next),
+      ]);
+      setNote(weekNote);
+      setRestDays(savedRestDays);
+    }
   }
 
   async function toggleWorkout(workout: UserWorkout, complete: boolean, actualMiles?: number) {
@@ -206,6 +273,46 @@ function LiveApp({ user, onSignOut }: { user: User; onSignOut: () => Promise<voi
     }
   }
 
+  async function editWorkout(workout: UserWorkout, changes: Partial<TemplateWorkout>) {
+    if (!state?.activePlan) return;
+    setError("");
+    setState((current) => current ? editedWorkoutState(current, workout, changes) : current);
+    try {
+      await updateWorkoutDefinition(user.uid, state.activePlan.id, workout.id, changes);
+    } catch (reason) {
+      setError(messageOf(reason));
+      await refresh();
+    }
+  }
+
+  async function addWorkout(weekNumber: number, workout: TemplateWorkout) {
+    if (!state?.activePlan) return;
+    setError("");
+    try {
+      const created = await addWorkoutToPlan(user.uid, state.activePlan.id, weekNumber, workout);
+      setState((current) => current ? addedWorkoutState(current, created) : current);
+      if (restDays[workout.day]) {
+        setRestDays((current) => ({ ...current, [workout.day]: false }));
+        await setRestDayCompletion(user.uid, state.activePlan.id, weekNumber, workout.day, false);
+      }
+    } catch (reason) {
+      setError(messageOf(reason));
+      throw reason;
+    }
+  }
+
+  async function toggleRestDay(day: DayKey, complete: boolean) {
+    if (!state?.activePlan) return;
+    const previous = restDays[day] || false;
+    setRestDays((current) => ({ ...current, [day]: complete }));
+    try {
+      await setRestDayCompletion(user.uid, state.activePlan.id, week, day, complete);
+    } catch (reason) {
+      setRestDays((current) => ({ ...current, [day]: previous }));
+      setError(messageOf(reason));
+    }
+  }
+
   if (authorized === false) return <main className="auth-page"><section className="auth-card"><AlertTriangle size={34} /><h1>This account isn’t invited.</h1><p>Ask the owner to add <strong>{user.email}</strong>, then try again.</p><button onClick={onSignOut}>Use another account</button></section></main>;
   if (!state) {
     if (error) {
@@ -217,8 +324,11 @@ function LiveApp({ user, onSignOut }: { user: User; onSignOut: () => Promise<voi
   const publishedTemplates = state.templates.filter((template) => template.status !== "archived");
   const common = { view, onView: setView, name: state.profile.displayName, photoUrl: state.profile.photoUrl, owner, onSignOut };
   return <Layout {...common}>{error && <ErrorBanner message={error} />}
-    {view === "dashboard" && <Dashboard plan={state.activePlan} workouts={state.activeWorkouts} note={note} busy={busy} onOpenLibrary={() => setView("library")} onWeekChange={selectWeek}
+    {view === "dashboard" && <Dashboard plan={state.activePlan} workouts={state.activeWorkouts} note={note} restDays={restDays} busy={busy} onOpenLibrary={() => setView("library")} onWeekChange={selectWeek}
       onToggle={toggleWorkout}
+      onAdd={addWorkout}
+      onEdit={editWorkout}
+      onToggleRest={toggleRestDay}
       onBulk={(items, complete) => perform(async () => { for (const workout of items) await setWorkoutCompletion(user.uid, state.profile.email, state.activePlan!.id, workout, complete, workout.plannedMiles); await refresh(); })}
       onNote={(value) => perform(async () => { await saveWeekNote(user.uid, state.activePlan!.id, week, value); setNote(value); })}
       onFinish={(completed) => perform(async () => { if (!window.confirm(`${completed ? "Finish" : "Archive"} this plan?`)) return; await finishPlan(user.uid, state.activePlan!.id, completed); await refresh(); setView("library"); })}
@@ -266,6 +376,7 @@ function DemoApp({ template, onExit }: { template: PlanTemplate; onExit: () => v
   const [activePlan, setActivePlan] = useState<UserPlan | null>(initial.plan);
   const [workouts, setWorkouts] = useState<UserWorkout[]>(initial.workouts);
   const [notes, setNotes] = useState<Record<number, string>>({});
+  const [demoRestDays, setDemoRestDays] = useState<Record<number, Partial<Record<DayKey, boolean>>>>({});
   const [week, setWeek] = useState(currentWeekNumber(initial.plan.startDate, initial.plan.weekCount));
   const [invites, setInvites] = useState(["friend@example.com"]);
   const [members, setMembers] = useState<SharedProfile[]>([
@@ -283,6 +394,34 @@ function DemoApp({ template, onExit }: { template: PlanTemplate; onExit: () => v
     setActivePlan((plan) => plan ? { ...plan, completedWorkouts: Math.max(0, plan.completedWorkouts + (workout.completed === complete ? 0 : complete ? 1 : -1)), completedMiles: Math.max(0, Number((plan.completedMiles + delta.milesRun).toFixed(2))) } : null);
   }
 
+  async function editDemoWorkout(workout: UserWorkout, changes: Partial<TemplateWorkout>) {
+    if (!activePlan) return;
+    const nextWorkout: UserWorkout = {
+      ...workout,
+      ...changes,
+      scheduledDate: changes.day ? dateForWorkout(activePlan.startDate, workout.weekNumber, changes.day) : workout.scheduledDate,
+    };
+    const plannedMilesDelta = (nextWorkout.plannedMiles ?? 0) - (workout.plannedMiles ?? 0);
+    setWorkouts((items) => items.map((item) => item.id === workout.id ? nextWorkout : item));
+    setPlans((items) => items.map((plan) => plan.id === activePlan.id ? { ...plan, plannedMiles: plan.plannedMiles + plannedMilesDelta } : plan));
+    setActivePlan((plan) => plan ? { ...plan, plannedMiles: plan.plannedMiles + plannedMilesDelta } : plan);
+  }
+
+  async function addDemoWorkout(weekNumber: number, workout: TemplateWorkout) {
+    if (!activePlan) return;
+    const created: UserWorkout = {
+      id: `one-off-${Date.now()}`,
+      ...workout,
+      weekNumber,
+      scheduledDate: dateForWorkout(activePlan.startDate, weekNumber, workout.day),
+      completed: false,
+    };
+    setWorkouts((items) => [...items, created].sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate)));
+    setPlans((items) => items.map((plan) => plan.id === activePlan.id ? { ...plan, totalWorkouts: plan.totalWorkouts + 1, plannedMiles: plan.plannedMiles + (workout.plannedMiles ?? 0) } : plan));
+    setActivePlan((plan) => plan ? { ...plan, totalWorkouts: plan.totalWorkouts + 1, plannedMiles: plan.plannedMiles + (workout.plannedMiles ?? 0) } : plan);
+    setDemoRestDays((items) => ({ ...items, [weekNumber]: { ...items[weekNumber], [workout.day]: false } }));
+  }
+
   async function saveDemoProfile(updates: Partial<UserProfile>) {
     const next = { ...profile, ...updates };
     setProfile(next);
@@ -294,7 +433,7 @@ function DemoApp({ template, onExit }: { template: PlanTemplate; onExit: () => v
 
   const layout = { view, onView: setView, name: profile.displayName, photoUrl: profile.photoUrl, owner: true, demo: true, onSignOut: onExit };
   return <Layout {...layout}>
-    {view === "dashboard" && <Dashboard plan={activePlan} workouts={workouts} note={notes[week] || ""} onOpenLibrary={() => setView("library")} onWeekChange={setWeek} onToggle={toggle} onBulk={async (items, complete) => { for (const item of items) await toggle(item, complete, item.plannedMiles); }} onNote={async (value) => setNotes((items) => ({ ...items, [week]: value }))} onFinish={async (completed) => { if (!activePlan) return; const finished = { ...activePlan, status: completed ? "completed" as const : "archived" as const }; setPlans((items) => items.map((item) => item.id === finished.id ? finished : item)); setActivePlan(null); setProfile((item) => ({ ...item, activePlanId: null, stats: completed ? { ...item.stats, plansCompleted: item.stats.plansCompleted + 1 } : item.stats })); setView("library"); }} />}
+    {view === "dashboard" && <Dashboard plan={activePlan} workouts={workouts} note={notes[week] || ""} restDays={demoRestDays[week] || {}} onOpenLibrary={() => setView("library")} onWeekChange={setWeek} onToggle={toggle} onAdd={addDemoWorkout} onEdit={editDemoWorkout} onToggleRest={async (day, complete) => setDemoRestDays((items) => ({ ...items, [week]: { ...items[week], [day]: complete } }))} onBulk={async (items, complete) => { for (const item of items) await toggle(item, complete, item.plannedMiles); }} onNote={async (value) => setNotes((items) => ({ ...items, [week]: value }))} onFinish={async (completed) => { if (!activePlan) return; const finished = { ...activePlan, status: completed ? "completed" as const : "archived" as const }; setPlans((items) => items.map((item) => item.id === finished.id ? finished : item)); setActivePlan(null); setProfile((item) => ({ ...item, activePlanId: null, stats: completed ? { ...item.stats, plansCompleted: item.stats.plansCompleted + 1 } : item.stats })); setView("library"); }} />}
     {view === "library" && <Library templates={templates.filter((item) => item.status !== "archived")} plans={plans} activePlanId={profile.activePlanId} onActivate={async (selected, start) => { const next = makeDemoPlan(selected, start); setPlans((items) => [next.plan, ...items.map((item) => item.status === "active" ? { ...item, status: "archived" as const } : item)]); setActivePlan(next.plan); setWorkouts(next.workouts); setProfile((item) => ({ ...item, activePlanId: next.plan.id })); setView("dashboard"); }} />}
     {view === "members" && <Members members={members} />}
     {view === "profile" && <Profile profile={profile} plans={plans} workouts={workouts} onSave={saveDemoProfile} />}

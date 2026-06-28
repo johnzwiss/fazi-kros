@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { currentWeekNumber, dateForWorkout, isMondayDate, planEndDate } from "../date";
+import { currentWeekNumber, dateForWorkout, dayKeyForDate, isMondayDate, planEndDate, weekNumberForDate } from "../date";
 
 describe("training dates", () => {
   it("maps weekdays from a Monday start", () => {
@@ -17,5 +17,10 @@ describe("training dates", () => {
     expect(isMondayDate("2026-06-29")).toBe(true);
     expect(isMondayDate("2026-06-30")).toBe(false);
     expect(currentWeekNumber("2026-06-01", 4, new Date("2026-08-01T12:00:00"))).toBe(4);
+  });
+
+  it("maps arbitrary plan dates back to their week and weekday", () => {
+    expect(weekNumberForDate("2026-06-29", 8, "2026-07-12")).toBe(2);
+    expect(dayKeyForDate("2026-07-12")).toBe("sun");
   });
 });
