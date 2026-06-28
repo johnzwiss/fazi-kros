@@ -16,6 +16,16 @@ export function currentWeekNumber(startDate: string, weekCount: number, today = 
   return Math.min(weekCount, Math.max(1, Math.floor(delta / 7) + 1));
 }
 
+export function weekNumberForDate(startDate: string, weekCount: number, value: string) {
+  const delta = differenceInCalendarDays(parseISO(value), parseISO(startDate));
+  return Math.min(weekCount, Math.max(1, Math.floor(delta / 7) + 1));
+}
+
+export function dayKeyForDate(value: string): DayKey {
+  const day = parseISO(value).getDay();
+  return (["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as DayKey[])[day];
+}
+
 export function isMondayDate(value: string) {
   return Boolean(value) && isMonday(parseISO(value));
 }

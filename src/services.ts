@@ -1,7 +1,9 @@
 import type { User } from "firebase/auth";
+import type { DocumentData, UpdateData } from "firebase/firestore";
 import {
   addDoc,
   collection,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -19,8 +21,10 @@ import { db } from "./firebase";
 import { applyDelta, workoutCompletionDelta } from "./stats";
 import {
   EMPTY_STATS,
+  type DayKey,
   type PlanTemplate,
   type SharedProfile,
+  type TemplateWorkout,
   type UserPlan,
   type UserProfile,
   type UserStats,
@@ -281,6 +285,111 @@ export async function setWorkoutCompletion(
   });
 }
 
+export async function updateWorkoutDefinition(
+  uid: string,
+  planId: string,
+  workoutId: string,
+  changes: Partial<TemplateWorkout>,
+) {
+  const database = requireDb();
+  const workoutRef = doc(database, "users", uid, "plans", planId, "workouts", workoutId);
+  const planRef = doc(database, "users", uid, "plans", planId);
+
+  await runTransaction(database, async (transaction) => {
+    const [workoutSnapshot, planSnapshot] = await Promise.all([
+      transaction.get(workoutRef),
+      transaction.get(planRef),
+    ]);
+    if (!workoutSnapshot.exists() || !planSnapshot.exists()) throw new Error("Training data is missing");
+
+    const stored = { ...(workoutSnapshot.data() as UserWorkout), id: workoutId };
+    const plan = { ...(planSnapshot.data() as UserPlan), id: planId };
+    const changedKeys = Object.keys(changes);
+    if (stored.completed && changedKeys.some((key) => key !== "day")) {
+      throw new Error("Uncheck this workout before changing its details");
+    }
+
+    const payload: UpdateData<DocumentData> = {};
+    if (changes.day) {
+      payload.day = changes.day;
+      payload.scheduledDate = dateForWorkout(plan.startDate, stored.weekNumber, changes.day);
+    }
+    if (changes.type) payload.type = changes.type;
+    if (changes.title != null) payload.title = changes.title.trim();
+
+    if (Object.hasOwn(changes, "instructions")) {
+      payload.instructions = changes.instructions?.trim() ? changes.instructions.trim() : deleteField();
+    }
+    if (Object.hasOwn(changes, "plannedMiles")) {
+      payload.plannedMiles = changes.plannedMiles == null ? deleteField() : changes.plannedMiles;
+    }
+    if (Object.hasOwn(changes, "plannedMinutes")) {
+      payload.plannedMinutes = changes.plannedMinutes == null ? deleteField() : changes.plannedMinutes;
+    }
+    if (Object.hasOwn(changes, "exercises")) {
+      payload.exercises = changes.exercises?.length ? changes.exercises : deleteField();
+    }
+
+    transaction.update(workoutRef, payload);
+    const oldPlannedMiles = stored.plannedMiles ?? 0;
+    const newPlannedMiles = Object.hasOwn(changes, "plannedMiles") ? changes.plannedMiles ?? 0 : oldPlannedMiles;
+    transaction.update(planRef, {
+      plannedMiles: Math.max(0, Number((plan.plannedMiles + newPlannedMiles - oldPlannedMiles).toFixed(2))),
+      updatedAt: serverTimestamp(),
+    });
+  });
+}
+
+export async function addWorkoutToPlan(
+  uid: string,
+  planId: string,
+  weekNumber: number,
+  workout: TemplateWorkout,
+): Promise<UserWorkout> {
+  const database = requireDb();
+  const planRef = doc(database, "users", uid, "plans", planId);
+  const workoutRef = doc(collection(database, "users", uid, "plans", planId, "workouts"));
+
+  let scheduledDate = "";
+  await runTransaction(database, async (transaction) => {
+    const planSnapshot = await transaction.get(planRef);
+    if (!planSnapshot.exists()) throw new Error("Plan not found");
+    const plan = { ...(planSnapshot.data() as UserPlan), id: planId };
+    if (plan.status !== "active") throw new Error("Workouts can only be added to an active plan");
+    if (weekNumber < 1 || weekNumber > plan.weekCount) throw new Error("That date is outside this plan");
+
+    scheduledDate = dateForWorkout(plan.startDate, weekNumber, workout.day);
+    const payload = {
+      day: workout.day,
+      type: workout.type,
+      title: workout.title.trim(),
+      ...(workout.instructions?.trim() ? { instructions: workout.instructions.trim() } : {}),
+      ...(workout.plannedMiles != null ? { plannedMiles: workout.plannedMiles } : {}),
+      ...(workout.plannedMinutes != null ? { plannedMinutes: workout.plannedMinutes } : {}),
+      ...(workout.exercises?.length ? { exercises: workout.exercises } : {}),
+      weekNumber,
+      scheduledDate,
+      completed: false,
+      completedAt: null,
+    };
+    transaction.set(workoutRef, payload);
+    transaction.update(planRef, {
+      totalWorkouts: plan.totalWorkouts + 1,
+      plannedMiles: Number((plan.plannedMiles + (workout.plannedMiles ?? 0)).toFixed(2)),
+      updatedAt: serverTimestamp(),
+    });
+  });
+
+  return {
+    id: workoutRef.id,
+    ...workout,
+    weekNumber,
+    scheduledDate,
+    completed: false,
+    completedAt: null,
+  };
+}
+
 export async function saveWeekNote(uid: string, planId: string, weekNumber: number, note: string) {
   await setDoc(
     doc(requireDb(), "users", uid, "plans", planId, "weeks", String(weekNumber)),
@@ -292,6 +401,19 @@ export async function saveWeekNote(uid: string, planId: string, weekNumber: numb
 export async function loadWeekNote(uid: string, planId: string, weekNumber: number) {
   const snapshot = await getDoc(doc(requireDb(), "users", uid, "plans", planId, "weeks", String(weekNumber)));
   return snapshot.exists() ? String(snapshot.data().note || "") : "";
+}
+
+export async function loadRestDays(uid: string, planId: string, weekNumber: number): Promise<Partial<Record<DayKey, boolean>>> {
+  const snapshot = await getDoc(doc(requireDb(), "users", uid, "plans", planId, "weeks", String(weekNumber)));
+  return snapshot.exists() ? (snapshot.data().restDays || {}) as Partial<Record<DayKey, boolean>> : {};
+}
+
+export async function setRestDayCompletion(uid: string, planId: string, weekNumber: number, day: DayKey, completed: boolean) {
+  await setDoc(
+    doc(requireDb(), "users", uid, "plans", planId, "weeks", String(weekNumber)),
+    { restDays: { [day]: completed }, updatedAt: serverTimestamp() },
+    { merge: true },
+  );
 }
 
 export async function finishPlan(uid: string, planId: string, completed: boolean) {
