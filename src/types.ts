@@ -45,6 +45,13 @@ export interface UserStats {
   plansCompleted: number;
 }
 
+export interface GoogleCalendarIntegration {
+  calendarId: string;
+  calendarName: string;
+  needsSync: boolean;
+  lastSyncedAt?: Timestamp;
+}
+
 export interface UserProfile {
   uid: string;
   email: string;
@@ -54,6 +61,7 @@ export interface UserProfile {
   trainingGoals: string;
   shareStats: boolean;
   activePlanId?: string | null;
+  googleCalendar?: GoogleCalendarIntegration;
   stats: UserStats;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
@@ -84,6 +92,9 @@ export interface UserWorkout extends TemplateWorkout {
   completed: boolean;
   actualMiles?: number;
   completedAt?: Timestamp | null;
+  googleCalendarEventId?: string;
+  googleCalendarFingerprint?: string;
+  googleCalendarSyncedAt?: Timestamp;
 }
 
 export interface SharedProfile {

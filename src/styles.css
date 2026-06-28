@@ -99,6 +99,10 @@ button.nav-link:hover, button.nav-link.active { background: var(--sage); color: 
 .empty-state p { max-width: 460px; }
 
 .dashboard-heading { align-items: center; }
+.dashboard-heading-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+.calendar-sync-button { white-space: nowrap; background: #e7eee3; color: var(--forest); border: 1px solid #cddac9; }
+.calendar-sync-button.needs-sync { background: #f5e7c7; border-color: #e4cf9d; color: #6b5122; }
+.calendar-status { padding: 9px 12px; border: 1px solid #cedbc9; border-radius: 12px; color: #45604c; background: #edf4e9; font-size: .78rem; }
 .week-picker { width: 170px; display: flex; align-items: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); }
 .week-picker svg { color: var(--forest); }
 .week-picker select { border: 0; padding: 4px; background: transparent; box-shadow: none; font-weight: 700; }
@@ -140,6 +144,7 @@ button.nav-link:hover, button.nav-link.active { background: var(--sage); color: 
 .rest-day-check input:checked + .custom-check { background: var(--forest); border-color: var(--forest); }
 .rest-day-check > span:last-child { display: grid; font-weight: 600; }
 .rest-day-check small { color: var(--muted); font-weight: 400; }
+.rest-day-check.read-only { cursor: default; }
 .outside-plan-day { margin-top: 14px; padding: 11px; border-radius: 12px; color: var(--muted); background: #f4f2eb; font-size: .78rem; }
 .day-view { max-width: 760px; }
 .day-view .day-card { min-height: 280px; }
@@ -261,6 +266,11 @@ button.month-day:hover { border-color: #a9b8aa; background: #f1f5ee; transform: 
 .recent-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #ece9df; }
 .recent-row div { display: grid; }
 .recent-row span { color: var(--muted); font-size: .74rem; }
+.calendar-settings { display: grid; gap: 17px; }
+.calendar-settings-body { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-top: 14px; border-top: 1px solid var(--line); }
+.calendar-settings-body > div:first-child { display: grid; gap: 3px; }
+.calendar-settings-body span, .calendar-settings-body small { color: var(--muted); font-size: .76rem; }
+.calendar-settings-body small { color: #6b572b; }
 .plan-table-row { display: grid; grid-template-columns: minmax(0,1fr) 100px 100px 70px; align-items: center; gap: 10px; padding: 13px 15px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); font-size: .82rem; }
 .plan-table-row > div { display: grid; }
 .plan-table-row span { color: var(--muted); }
@@ -323,6 +333,8 @@ button.month-day:hover { border-color: #a9b8aa; background: #f1f5ee; transform: 
   .mobile-nav button { min-width: 58px; display: grid; justify-items: center; gap: 2px; padding: 5px 7px; background: transparent; color: #838780; border-radius: 10px; font-size: .62rem; }
   .mobile-nav button:hover, .mobile-nav button.active { color: var(--forest); background: var(--sage); transform: none; }
   .page-heading, .dashboard-heading { display: grid; align-items: start; gap: 14px; }
+  .dashboard-heading-actions { width: 100%; display: grid; justify-content: stretch; }
+  .dashboard-heading-actions > button { width: 100%; }
   .week-picker { width: 100%; }
   .summary-grid { grid-template-columns: 1fr 1fr; }
   .stat-card { min-height: 105px; }
@@ -351,6 +363,9 @@ button.month-day:hover { border-color: #a9b8aa; background: #f1f5ee; transform: 
   .avatar-large { width: 67px; height: 67px; }
   .profile-stats { grid-template-columns: repeat(2, 1fr); }
   .profile-stats .stat-card:last-child { grid-column: 1 / -1; }
+  .calendar-settings-body { display: grid; }
+  .calendar-settings-body .button-row { justify-content: stretch; }
+  .calendar-settings-body .button-row button { flex: 1; }
   .plan-table-row { grid-template-columns: 1fr auto; }
   .plan-table-row > span:nth-of-type(2) { display: none; }
   .importer-head { align-items: flex-start; display: grid; }

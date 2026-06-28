@@ -1,7 +1,7 @@
 import { AlertTriangle, Cloud, Dumbbell, LogIn, ShieldCheck } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { User } from "firebase/auth";
-import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
+import { GoogleAuthProvider, onAuthStateChanged, reauthenticateWithPopup, signInWithPopup, signOut } from "firebase/auth";
 import { Admin } from "./components/Admin";
 import { Dashboard } from "./components/Dashboard";
 import { Layout, ErrorBanner, LoadingScreen, type View } from "./components/Layout";
@@ -9,7 +9,9 @@ import { Library } from "./components/Library";
 import { Members } from "./components/Members";
 import { Profile } from "./components/Profile";
 import { currentWeekNumber, dateForWorkout, mondayOfCurrentWeek, planEndDate } from "./date";
+import { buildTrainingUrl, clearTrainingUrl, parseTrainingDeepLink, type CalendarView, type TrainingDeepLink } from "./deepLink";
 import { auth, firebaseConfigured } from "./firebase";
+import { deleteGoogleCalendar, GOOGLE_CALENDAR_SCOPE, syncGoogleCalendar } from "./googleCalendar";
 import { planTemplateSchema } from "./schema";
 import {
   activateTemplate,
@@ -17,6 +19,7 @@ import {
   addInvite,
   archiveTemplate,
   checkAccess,
+  clearCalendarIntegration,
   ensureUserProfile,
   finishPlan,
   loadAllWorkouts,
@@ -28,9 +31,11 @@ import {
   loadTemplates,
   loadWeekNote,
   loadWorkouts,
+  markCalendarNeedsSync,
   publishTemplate,
   removeInvite,
   saveProfile,
+  saveCalendarSyncState,
   saveWeekNote,
   setRestDayCompletion,
   setWorkoutCompletion,
@@ -110,6 +115,24 @@ interface AppState {
   allWorkouts: UserWorkout[];
   members: SharedProfile[];
   invites: string[];
+}
+
+interface DisplayedTraining {
+  link: TrainingDeepLink;
+  plan: UserPlan;
+  workouts: UserWorkout[];
+  readOnly: boolean;
+}
+
+function calendarDirtyState(current: AppState): AppState {
+  if (!current.profile.googleCalendar) return current;
+  return {
+    ...current,
+    profile: {
+      ...current.profile,
+      googleCalendar: { ...current.profile.googleCalendar, needsSync: true },
+    },
+  };
 }
 
 function optimisticWorkoutState(
@@ -198,12 +221,20 @@ function addedWorkoutState(current: AppState, workout: UserWorkout): AppState {
 function LiveApp({ user, onSignOut }: { user: User; onSignOut: () => Promise<void> }) {
   const [view, setView] = useState<View>("dashboard");
   const [state, setState] = useState<AppState | null>(null);
+  const [requestedLink] = useState<{ link: TrainingDeepLink | null; error?: string }>(() => {
+    try { return { link: parseTrainingDeepLink(window.location.search) }; }
+    catch (reason) { return { link: null, error: messageOf(reason) }; }
+  });
+  const [displayedTraining, setDisplayedTraining] = useState<DisplayedTraining | null>(null);
+  const [linkResolved, setLinkResolved] = useState(false);
   const [authorized, setAuthorized] = useState<boolean | null>(null);
   const [owner, setOwner] = useState(false);
   const [week, setWeek] = useState(1);
   const [note, setNote] = useState("");
   const [restDays, setRestDays] = useState<Partial<Record<DayKey, boolean>>>({});
   const [busy, setBusy] = useState(false);
+  const [calendarBusy, setCalendarBusy] = useState(false);
+  const [calendarMessage, setCalendarMessage] = useState("");
   const [error, setError] = useState("");
   async function refresh(asOwner = owner) {
     const profile = await loadProfile(user.uid);
@@ -244,9 +275,123 @@ function LiveApp({ user, onSignOut }: { user: User; onSignOut: () => Promise<voi
     })();
   }, [user.uid]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (!state || linkResolved) return;
+    setLinkResolved(true);
+    if (requestedLink.error) {
+      setError(requestedLink.error);
+      window.history.replaceState(null, "", clearTrainingUrl(window.location.href));
+      return;
+    }
+    if (!requestedLink.link) return;
+    const targetPlan = state.plans.find((plan) => plan.id === requestedLink.link!.planId);
+    if (!targetPlan) {
+      setError("That training link is unavailable for this account");
+      window.history.replaceState(null, "", clearTrainingUrl(window.location.href));
+      return;
+    }
+    if (targetPlan.id === state.activePlan?.id) {
+      setDisplayedTraining({ link: requestedLink.link, plan: targetPlan, workouts: state.activeWorkouts, readOnly: false });
+      setView("dashboard");
+      return;
+    }
+    loadWorkouts(user.uid, targetPlan.id)
+      .then((workouts) => {
+        setDisplayedTraining({ link: requestedLink.link!, plan: targetPlan, workouts, readOnly: true });
+        setView("dashboard");
+      })
+      .catch(() => {
+        setError("That historical training day could not be loaded");
+        window.history.replaceState(null, "", clearTrainingUrl(window.location.href));
+      });
+  }, [linkResolved, requestedLink, state, user.uid]);
+
   async function perform(action: () => Promise<void>) {
     setBusy(true); setError("");
     try { await action(); } catch (reason) { setError(messageOf(reason)); } finally { setBusy(false); }
+  }
+
+  async function markCalendarDirty() {
+    if (!state?.profile.googleCalendar) return;
+    setState((current) => current ? calendarDirtyState(current) : current);
+    await markCalendarNeedsSync(user.uid);
+  }
+
+  async function calendarAccessToken() {
+    const provider = new GoogleAuthProvider();
+    provider.addScope(GOOGLE_CALENDAR_SCOPE);
+    if (user.email) provider.setCustomParameters({ login_hint: user.email });
+    const result = await reauthenticateWithPopup(user, provider);
+    const token = GoogleAuthProvider.credentialFromResult(result)?.accessToken;
+    if (!token) throw new Error("Google did not provide Calendar access");
+    return token;
+  }
+
+  async function syncCalendar() {
+    if (!state) return;
+    setCalendarBusy(true);
+    setCalendarMessage("");
+    setError("");
+    try {
+      const token = await calendarAccessToken();
+      const appBaseUrl = new URL(import.meta.env.BASE_URL, window.location.origin).toString();
+      const result = await syncGoogleCalendar({
+        token,
+        existingCalendarId: state.profile.googleCalendar?.calendarId,
+        plan: state.activePlan,
+        workouts: state.activeWorkouts,
+        appBaseUrl,
+      });
+      await saveCalendarSyncState(
+        user.uid,
+        state.activePlan?.id || null,
+        result.calendarId,
+        result.calendarName,
+        result.workoutUpdates,
+        result.failed > 0,
+      );
+      await refresh();
+      const changed = result.created + result.updated + result.deleted;
+      setCalendarMessage(result.failed
+        ? `Synced ${changed} changes; ${result.failed} item${result.failed === 1 ? "" : "s"} need another try.`
+        : changed
+          ? `Google Calendar updated: ${result.created} added, ${result.updated} changed, ${result.deleted} cleaned up.`
+          : "Google Calendar is already up to date.");
+    } catch (reason) {
+      setError(messageOf(reason));
+    } finally {
+      setCalendarBusy(false);
+    }
+  }
+
+  async function disconnectCalendar() {
+    if (!state?.profile.googleCalendar) return;
+    if (!window.confirm("Delete the Training Plan Tracker calendar and disconnect it?")) return;
+    setCalendarBusy(true);
+    setCalendarMessage("");
+    setError("");
+    try {
+      const token = await calendarAccessToken();
+      await deleteGoogleCalendar(token, state.profile.googleCalendar.calendarId);
+      await clearCalendarIntegration(user.uid);
+      await refresh();
+      setCalendarMessage("Google Calendar disconnected.");
+    } catch (reason) {
+      setError(messageOf(reason));
+    } finally {
+      setCalendarBusy(false);
+    }
+  }
+
+  const updateTrainingUrl = useCallback((planId: string, date: string, calendarView: CalendarView) => {
+    const baseUrl = new URL(import.meta.env.BASE_URL, window.location.origin).toString();
+    window.history.replaceState(null, "", buildTrainingUrl(baseUrl, { planId, date, view: calendarView }));
+  }, []);
+
+  function changeView(next: View) {
+    setDisplayedTraining(null);
+    window.history.replaceState(null, "", clearTrainingUrl(window.location.href));
+    setView(next);
   }
 
   async function selectWeek(next: number) {
@@ -267,6 +412,7 @@ function LiveApp({ user, onSignOut }: { user: User; onSignOut: () => Promise<voi
     setState((current) => current ? optimisticWorkoutState(current, workout, complete, actualMiles) : current);
     try {
       await setWorkoutCompletion(user.uid, state.profile.email, state.activePlan.id, workout, complete, actualMiles);
+      await markCalendarDirty();
     } catch (reason) {
       setError(messageOf(reason));
       await refresh();
@@ -279,6 +425,7 @@ function LiveApp({ user, onSignOut }: { user: User; onSignOut: () => Promise<voi
     setState((current) => current ? editedWorkoutState(current, workout, changes) : current);
     try {
       await updateWorkoutDefinition(user.uid, state.activePlan.id, workout.id, changes);
+      await markCalendarDirty();
     } catch (reason) {
       setError(messageOf(reason));
       await refresh();
@@ -295,6 +442,7 @@ function LiveApp({ user, onSignOut }: { user: User; onSignOut: () => Promise<voi
         setRestDays((current) => ({ ...current, [workout.day]: false }));
         await setRestDayCompletion(user.uid, state.activePlan.id, weekNumber, workout.day, false);
       }
+      await markCalendarDirty();
     } catch (reason) {
       setError(messageOf(reason));
       throw reason;
@@ -322,20 +470,34 @@ function LiveApp({ user, onSignOut }: { user: User; onSignOut: () => Promise<voi
   }
 
   const publishedTemplates = state.templates.filter((template) => template.status !== "archived");
-  const common = { view, onView: setView, name: state.profile.displayName, photoUrl: state.profile.photoUrl, owner, onSignOut };
+  const displayedPlan = displayedTraining?.readOnly ? displayedTraining.plan : state.activePlan;
+  const displayedWorkouts = displayedTraining?.readOnly
+    ? displayedTraining.workouts
+    : displayedPlan?.id === state.activePlan?.id ? state.activeWorkouts : displayedTraining?.workouts || [];
+  const common = { view, onView: changeView, name: state.profile.displayName, photoUrl: state.profile.photoUrl, owner, onSignOut };
   return <Layout {...common}>{error && <ErrorBanner message={error} />}
-    {view === "dashboard" && <Dashboard plan={state.activePlan} workouts={state.activeWorkouts} note={note} restDays={restDays} busy={busy} onOpenLibrary={() => setView("library")} onWeekChange={selectWeek}
+    {view === "dashboard" && <Dashboard plan={displayedPlan} workouts={displayedWorkouts} note={note} restDays={displayedTraining?.readOnly ? {} : restDays} busy={busy}
+      initialDate={displayedTraining?.link.date}
+      initialView={displayedTraining?.link.view}
+      readOnly={displayedTraining?.readOnly}
+      calendarConnected={Boolean(state.profile.googleCalendar)}
+      calendarNeedsSync={state.profile.googleCalendar?.needsSync}
+      calendarBusy={calendarBusy}
+      calendarMessage={calendarMessage}
+      onOpenLibrary={() => changeView("library")} onWeekChange={displayedTraining?.readOnly ? async () => {} : selectWeek}
       onToggle={toggleWorkout}
       onAdd={addWorkout}
       onEdit={editWorkout}
       onToggleRest={toggleRestDay}
-      onBulk={(items, complete) => perform(async () => { for (const workout of items) await setWorkoutCompletion(user.uid, state.profile.email, state.activePlan!.id, workout, complete, workout.plannedMiles); await refresh(); })}
+      onBulk={(items, complete) => perform(async () => { for (const workout of items) await setWorkoutCompletion(user.uid, state.profile.email, state.activePlan!.id, workout, complete, workout.plannedMiles); await markCalendarDirty(); await refresh(); })}
       onNote={(value) => perform(async () => { await saveWeekNote(user.uid, state.activePlan!.id, week, value); setNote(value); })}
-      onFinish={(completed) => perform(async () => { if (!window.confirm(`${completed ? "Finish" : "Archive"} this plan?`)) return; await finishPlan(user.uid, state.activePlan!.id, completed); await refresh(); setView("library"); })}
+      onFinish={(completed) => perform(async () => { if (!window.confirm(`${completed ? "Finish" : "Archive"} this plan?`)) return; await finishPlan(user.uid, state.activePlan!.id, completed); await markCalendarDirty(); await refresh(); changeView("library"); })}
+      onSyncCalendar={displayedTraining?.readOnly ? undefined : syncCalendar}
+      onNavigate={updateTrainingUrl}
     />}
-    {view === "library" && <Library templates={publishedTemplates} plans={state.plans} activePlanId={state.profile.activePlanId} busy={busy} onActivate={(template, start) => perform(async () => { await activateTemplate(user.uid, template, start, state.profile.activePlanId); await refresh(); setView("dashboard"); })} />}
+    {view === "library" && <Library templates={publishedTemplates} plans={state.plans} activePlanId={state.profile.activePlanId} busy={busy} onActivate={(template, start) => perform(async () => { await activateTemplate(user.uid, template, start, state.profile.activePlanId); await markCalendarDirty(); await refresh(); changeView("dashboard"); })} />}
     {view === "members" && <Members members={state.members} />}
-    {view === "profile" && <Profile profile={state.profile} plans={state.plans} workouts={state.allWorkouts} busy={busy} onSave={(updates) => perform(async () => { await saveProfile(user.uid, state.profile, updates); await refresh(); })} />}
+    {view === "profile" && <Profile profile={state.profile} plans={state.plans} workouts={state.allWorkouts} busy={busy} calendarBusy={calendarBusy} calendarMessage={calendarMessage} onCalendarSync={syncCalendar} onCalendarDisconnect={disconnectCalendar} onSave={(updates) => perform(async () => { await saveProfile(user.uid, state.profile, updates); await refresh(); })} />}
     {view === "admin" && owner && <Admin ownerEmail={state.profile.email} invites={state.invites} templates={state.templates} busy={busy}
       onInvite={(email) => perform(async () => { await addInvite(email); await refresh(); })}
       onRemoveInvite={(email) => perform(async () => { await removeInvite(email); await refresh(); })}

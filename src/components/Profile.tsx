@@ -1,4 +1,4 @@
-import { Award, Dumbbell, Footprints, Medal, Route, Save, Share2, Target } from "lucide-react";
+import { Award, CalendarSync, Dumbbell, Footprints, Medal, Route, Save, Share2, Target, Trash2 } from "lucide-react";
 import { format, parseISO, startOfWeek } from "date-fns";
 import { useMemo, useState } from "react";
 import { prettyDate } from "../date";
@@ -10,10 +10,14 @@ interface ProfileProps {
   plans: UserPlan[];
   workouts: UserWorkout[];
   busy?: boolean;
+  calendarBusy?: boolean;
+  calendarMessage?: string;
   onSave: (updates: Partial<UserProfile>) => Promise<void>;
+  onCalendarSync?: () => Promise<void>;
+  onCalendarDisconnect?: () => Promise<void>;
 }
 
-export function Profile({ profile, plans, workouts, busy, onSave }: ProfileProps) {
+export function Profile({ profile, plans, workouts, busy, calendarBusy, calendarMessage, onSave, onCalendarSync, onCalendarDisconnect }: ProfileProps) {
   const [form, setForm] = useState({ displayName: profile.displayName, bio: profile.bio, trainingGoals: profile.trainingGoals, shareStats: profile.shareStats });
   const [saved, setSaved] = useState(false);
   const recentWeeks = useMemo(() => {
@@ -57,6 +61,21 @@ export function Profile({ profile, plans, workouts, busy, onSave }: ProfileProps
         <button disabled={busy} type="submit"><Save size={17} /> {saved ? "Saved" : "Save profile"}</button>
       </form>
       <article className="card recent-card"><h2>Recent weeks</h2>{recentWeeks.length ? recentWeeks.map(([date, totals]) => <div className="recent-row" key={date}><div><strong>Week of {prettyDate(date, "MMM d")}</strong><span>{totals.workouts} workouts</span></div><strong>{totals.miles.toFixed(1)} mi</strong></div>) : <p className="muted">Complete a workout and your weekly history will appear here.</p>}</article>
+    </section>
+    <section className="card calendar-settings">
+      <div className="section-title"><CalendarSync size={21} /><div><h2>Google Calendar</h2><p>Send your active plan to a private, app-managed calendar.</p></div></div>
+      <div className="calendar-settings-body">
+        <div>
+          <strong>{profile.googleCalendar ? profile.googleCalendar.calendarName : "Not connected"}</strong>
+          <span>{profile.googleCalendar?.lastSyncedAt ? `Last synced ${profile.googleCalendar.lastSyncedAt.toDate().toLocaleString()}` : "Calendar access is requested only when you sync."}</span>
+          {profile.googleCalendar?.needsSync && <small>Training changes are ready to sync.</small>}
+          {calendarMessage && <small>{calendarMessage}</small>}
+        </div>
+        <div className="button-row">
+          {onCalendarSync && <button disabled={calendarBusy} onClick={onCalendarSync}><CalendarSync size={17} /> {calendarBusy ? "Syncing…" : profile.googleCalendar ? "Sync now" : "Connect & sync"}</button>}
+          {profile.googleCalendar && onCalendarDisconnect && <button className="secondary danger-text" disabled={calendarBusy} onClick={onCalendarDisconnect}><Trash2 size={16} /> Disconnect</button>}
+        </div>
+      </div>
     </section>
     <section className="history-section"><div className="section-title"><Medal size={20} /><div><h2>Your plans</h2><p>A record of the seasons you put together.</p></div></div><div className="plan-table">
       {plans.map((plan) => <div className="plan-table-row" key={plan.id}><div><strong>{plan.title}</strong><span>{prettyDate(plan.startDate, "MMM yyyy")} · {plan.status}</span></div><span>{plan.completedMiles} mi</span><span>{plan.completedWorkouts}/{plan.totalWorkouts}</span><strong>{planProgress(plan)}%</strong></div>)}
