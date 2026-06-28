@@ -1,9 +1,10 @@
-import { Archive, CalendarPlus, CheckCircle2, Clock3, Footprints } from "lucide-react";
+import { Archive, CalendarPlus, CheckCircle2, Clock3, Eye, Footprints } from "lucide-react";
 import { useMemo, useState } from "react";
 import { isMondayDate, mondayOfCurrentWeek, prettyDate } from "../date";
 import { planProgress } from "../stats";
 import type { PlanTemplate, UserPlan } from "../types";
 import { EmptyState, ProgressBar } from "./Layout";
+import { TemplatePreview } from "./TemplatePreview";
 
 interface LibraryProps {
   templates: PlanTemplate[];
@@ -16,6 +17,7 @@ interface LibraryProps {
 export function Library({ templates, plans, activePlanId, busy, onActivate }: LibraryProps) {
   const [dates, setDates] = useState<Record<string, string>>({});
   const [selected, setSelected] = useState<string | null>(null);
+  const [previewing, setPreviewing] = useState<PlanTemplate | null>(null);
   const defaultMonday = mondayOfCurrentWeek();
 
   async function activate(template: PlanTemplate) {
@@ -37,7 +39,7 @@ export function Library({ templates, plans, activePlanId, busy, onActivate }: Li
           <div className="template-icon"><Footprints size={22} /></div>
           <div><p className="eyebrow">{template.weeks.length} weeks · {workoutCount} workouts</p><h2>{template.title}</h2><p>{template.description}</p></div>
           <div className="template-meta"><span><Clock3 size={16} /> {template.weeks.length} weeks</span><span><Footprints size={16} /> {miles} planned miles</span></div>
-          <div className="start-row"><label>Start Monday<input type="date" value={startDate} onChange={(event) => setDates((value) => ({ ...value, [template.id || ""]: event.target.value }))} /></label><button disabled={busy || selected === template.id || !isMondayDate(startDate)} onClick={() => activate(template)}><CalendarPlus size={17} /> {selected === template.id ? "Starting…" : "Start plan"}</button></div>
+          <div className="start-row"><label>Start Monday<input type="date" value={startDate} onChange={(event) => setDates((value) => ({ ...value, [template.id || ""]: event.target.value }))} /></label><div className="template-actions"><button className="secondary" onClick={() => setPreviewing(template)}><Eye size={17} /> Preview plan</button><button disabled={busy || selected === template.id || !isMondayDate(startDate)} onClick={() => activate(template)}><CalendarPlus size={17} /> {selected === template.id ? "Starting…" : "Start plan"}</button></div></div>
           {!isMondayDate(startDate) && <small className="field-error">Please choose a Monday.</small>}
         </article>;
       })}
@@ -53,5 +55,6 @@ export function Library({ templates, plans, activePlanId, busy, onActivate }: Li
         </article>)}
       </div>}
     </section>
+    {previewing && <TemplatePreview template={previewing} onClose={() => setPreviewing(null)} />}
   </div>;
 }
