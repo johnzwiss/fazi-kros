@@ -32,7 +32,7 @@ import {
   saveWeekNote,
   setWorkoutCompletion,
 } from "./services";
-import { applyDelta, statDelta } from "./stats";
+import { applyDelta, workoutCompletionDelta } from "./stats";
 import {
   EMPTY_STATS,
   type PlanTemplate,
@@ -106,6 +106,43 @@ interface AppState {
   invites: string[];
 }
 
+function optimisticWorkoutState(
+  current: AppState,
+  workout: UserWorkout,
+  completing: boolean,
+  actualMiles?: number,
+): AppState {
+  if (!current.activePlan) return current;
+  const delta = workoutCompletionDelta(workout, completing, actualMiles);
+  const completedDelta = workout.completed === completing ? 0 : completing ? 1 : -1;
+  const nextWorkout: UserWorkout = {
+    ...workout,
+    completed: completing,
+    ...(workout.type === "running"
+      ? { actualMiles: completing ? actualMiles ?? workout.plannedMiles ?? 0 : undefined }
+      : {}),
+  };
+  const nextPlan = {
+    ...current.activePlan,
+    completedWorkouts: Math.max(0, current.activePlan.completedWorkouts + completedDelta),
+    completedMiles: Math.max(0, Number((current.activePlan.completedMiles + delta.milesRun).toFixed(2))),
+  };
+  const matchesWorkout = (item: UserWorkout) => item.id === workout.id && item.scheduledDate === workout.scheduledDate;
+  const nextStats = applyDelta(current.profile.stats, delta);
+
+  return {
+    ...current,
+    profile: { ...current.profile, stats: nextStats },
+    activePlan: nextPlan,
+    plans: current.plans.map((plan) => plan.id === nextPlan.id ? nextPlan : plan),
+    activeWorkouts: current.activeWorkouts.map((item) => matchesWorkout(item) ? nextWorkout : item),
+    allWorkouts: current.allWorkouts.map((item) => matchesWorkout(item) ? nextWorkout : item),
+    members: current.profile.shareStats
+      ? current.members.map((member) => member.email === current.profile.email ? { ...member, stats: nextStats } : member)
+      : current.members,
+  };
+}
+
 function LiveApp({ user, onSignOut }: { user: User; onSignOut: () => Promise<void> }) {
   const [view, setView] = useState<View>("dashboard");
   const [state, setState] = useState<AppState | null>(null);
@@ -157,6 +194,18 @@ function LiveApp({ user, onSignOut }: { user: User; onSignOut: () => Promise<voi
     if (state?.activePlan) setNote(await loadWeekNote(user.uid, state.activePlan.id, next));
   }
 
+  async function toggleWorkout(workout: UserWorkout, complete: boolean, actualMiles?: number) {
+    if (!state?.activePlan) return;
+    setError("");
+    setState((current) => current ? optimisticWorkoutState(current, workout, complete, actualMiles) : current);
+    try {
+      await setWorkoutCompletion(user.uid, state.profile.email, state.activePlan.id, workout, complete, actualMiles);
+    } catch (reason) {
+      setError(messageOf(reason));
+      await refresh();
+    }
+  }
+
   if (authorized === false) return <main className="auth-page"><section className="auth-card"><AlertTriangle size={34} /><h1>This account isn’t invited.</h1><p>Ask the owner to add <strong>{user.email}</strong>, then try again.</p><button onClick={onSignOut}>Use another account</button></section></main>;
   if (!state) {
     if (error) {
@@ -169,7 +218,7 @@ function LiveApp({ user, onSignOut }: { user: User; onSignOut: () => Promise<voi
   const common = { view, onView: setView, name: state.profile.displayName, photoUrl: state.profile.photoUrl, owner, onSignOut };
   return <Layout {...common}>{error && <ErrorBanner message={error} />}
     {view === "dashboard" && <Dashboard plan={state.activePlan} workouts={state.activeWorkouts} note={note} busy={busy} onOpenLibrary={() => setView("library")} onWeekChange={selectWeek}
-      onToggle={(workout, complete, actual) => perform(async () => { await setWorkoutCompletion(user.uid, state.profile.email, state.activePlan!.id, workout, complete, actual); await refresh(); })}
+      onToggle={toggleWorkout}
       onBulk={(items, complete) => perform(async () => { for (const workout of items) await setWorkoutCompletion(user.uid, state.profile.email, state.activePlan!.id, workout, complete, workout.plannedMiles); await refresh(); })}
       onNote={(value) => perform(async () => { await saveWeekNote(user.uid, state.activePlan!.id, week, value); setNote(value); })}
       onFinish={(completed) => perform(async () => { if (!window.confirm(`${completed ? "Finish" : "Archive"} this plan?`)) return; await finishPlan(user.uid, state.activePlan!.id, completed); await refresh(); setView("library"); })}
@@ -226,8 +275,7 @@ function DemoApp({ template, onExit }: { template: PlanTemplate; onExit: () => v
   async function toggle(workout: UserWorkout, complete: boolean, actualMiles?: number) {
     if (workout.completed === complete && actualMiles === workout.actualMiles) return;
     const nextWorkout = { ...workout, completed: complete, actualMiles: workout.type === "running" && complete ? actualMiles ?? workout.plannedMiles : undefined };
-    let delta = statDelta(nextWorkout, complete);
-    if (workout.completed === complete && complete && actualMiles != null) delta = { workoutsCompleted: 0, runsCompleted: 0, strengthWorkoutsCompleted: 0, milesRun: actualMiles - (workout.actualMiles ?? workout.plannedMiles ?? 0) };
+    const delta = workoutCompletionDelta(workout, complete, actualMiles);
     const nextStats = applyDelta(profile.stats, delta);
     setProfile((value) => ({ ...value, stats: nextStats }));
     setWorkouts((items) => items.map((item) => item.id === workout.id ? nextWorkout : item));

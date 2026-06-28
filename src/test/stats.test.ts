@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyDelta, mileageForWorkout, planProgress, statDelta } from "../stats";
+import { applyDelta, mileageForWorkout, planProgress, statDelta, workoutCompletionDelta } from "../stats";
 import { EMPTY_STATS, type UserWorkout } from "../types";
 
 const run: UserWorkout = {
@@ -26,5 +26,10 @@ describe("training statistics", () => {
 
   it("calculates rounded plan progress", () => {
     expect(planProgress({ completedWorkouts: 2, totalWorkouts: 3 })).toBe(67);
+  });
+
+  it("calculates optimistic completion and mileage-edit deltas", () => {
+    expect(workoutCompletionDelta(run, true, 4.5)).toMatchObject({ workoutsCompleted: 1, runsCompleted: 1, milesRun: 4.5 });
+    expect(workoutCompletionDelta({ ...run, completed: true, actualMiles: 4.5 }, true, 5)).toMatchObject({ workoutsCompleted: 0, milesRun: 0.5 });
   });
 });

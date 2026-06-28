@@ -107,13 +107,23 @@ export function Dashboard({ plan, workouts, note, busy, onOpenLibrary, onWeekCha
 
 function WorkoutItem({ workout, disabled, onToggle }: { workout: UserWorkout; disabled?: boolean; onToggle: DashboardProps["onToggle"] }) {
   const [expanded, setExpanded] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [miles, setMiles] = useState(String(workout.actualMiles ?? workout.plannedMiles ?? ""));
   useEffect(() => setMiles(String(workout.actualMiles ?? workout.plannedMiles ?? "")), [workout.actualMiles, workout.plannedMiles]);
   const hasDetails = Boolean(workout.instructions || workout.exercises?.length || workout.plannedMinutes);
   const meta = useMemo(() => [workout.plannedMiles != null ? `${workout.plannedMiles} mi` : "", workout.plannedMinutes ? `${workout.plannedMinutes} min` : ""].filter(Boolean).join(" · "), [workout]);
+  async function toggle(complete: boolean) {
+    if (saving) return;
+    setSaving(true);
+    try {
+      await onToggle(workout, complete, complete && workout.type === "running" ? Number(miles) || workout.plannedMiles : undefined);
+    } finally {
+      setSaving(false);
+    }
+  }
   return <div className={workout.completed ? "workout-item complete" : "workout-item"}>
     <div className="workout-top">
-      <label className="check-label"><input type="checkbox" checked={workout.completed} disabled={disabled} onChange={(event) => onToggle(workout, event.target.checked, event.target.checked && workout.type === "running" ? Number(miles) || workout.plannedMiles : undefined)} /><span className="custom-check">{workout.completed && <Check size={13} />}</span></label>
+      <label className={saving ? "check-label saving" : "check-label"}><input type="checkbox" checked={workout.completed} disabled={disabled || saving} onChange={(event) => toggle(event.target.checked)} /><span className="custom-check">{workout.completed && <Check size={14} />}</span></label>
       <button className="workout-summary" onClick={() => hasDetails && setExpanded((value) => !value)}>
         <span className={`type-dot ${workout.type}`} />
         <span><strong>{workout.title}</strong><small>{workout.type.replace("_", " ")}{meta ? ` · ${meta}` : ""}</small></span>

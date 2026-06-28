@@ -14,6 +14,27 @@ export function statDelta(workout: UserWorkout, completing: boolean): Omit<UserS
   };
 }
 
+export function workoutCompletionDelta(
+  workout: UserWorkout,
+  completing: boolean,
+  actualMiles?: number,
+): Omit<UserStats, "plansCompleted"> {
+  if (workout.completed === completing) {
+    return {
+      workoutsCompleted: 0,
+      runsCompleted: 0,
+      strengthWorkoutsCompleted: 0,
+      milesRun: completing && workout.type === "running" && actualMiles != null
+        ? actualMiles - mileageForWorkout(workout)
+        : 0,
+    };
+  }
+
+  const delta = statDelta(workout, completing);
+  if (completing && workout.type === "running" && actualMiles != null) delta.milesRun = actualMiles;
+  return delta;
+}
+
 export function applyDelta(stats: UserStats, delta: Partial<UserStats>): UserStats {
   return {
     workoutsCompleted: Math.max(0, stats.workoutsCompleted + (delta.workoutsCompleted ?? 0)),

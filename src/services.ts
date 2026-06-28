@@ -16,7 +16,7 @@ import {
 } from "firebase/firestore";
 import { dateForWorkout, planEndDate } from "./date";
 import { db } from "./firebase";
-import { applyDelta, mileageForWorkout, statDelta } from "./stats";
+import { applyDelta, workoutCompletionDelta } from "./stats";
 import {
   EMPTY_STATS,
   type PlanTemplate,
@@ -256,12 +256,7 @@ export async function setWorkoutCompletion(
     const storedWorkout = { ...(workoutSnapshot.data() as UserWorkout), id: workout.id };
     if (storedWorkout.completed === completing && (actualMiles == null || actualMiles === storedWorkout.actualMiles)) return;
 
-    let delta = statDelta(storedWorkout, completing);
-    if (storedWorkout.completed === completing && completing && actualMiles != null) {
-      delta = { workoutsCompleted: 0, runsCompleted: 0, strengthWorkoutsCompleted: 0, milesRun: actualMiles - mileageForWorkout(storedWorkout) };
-    } else if (completing && storedWorkout.type === "running" && actualMiles != null) {
-      delta.milesRun = actualMiles;
-    }
+    const delta = workoutCompletionDelta(storedWorkout, completing, actualMiles);
 
     const userData = userSnapshot.data() as UserProfile;
     const nextStats = applyDelta(userData.stats || EMPTY_STATS, delta);
