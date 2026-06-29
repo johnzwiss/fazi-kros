@@ -6,6 +6,8 @@ A private daily planner for a two-person home, with the existing combined runnin
 
 - A private two-person Home with a shared weekly chore calendar.
 - Dated chores, partner assignment, shared check-offs, notes, and deletion.
+- Common-chore suggestions plus an automatically saved list of previously used chores.
+- Optional Google Calendar sync to a separate `Daybook — Home` calendar for each partner.
 - One active plan per member, with archived and completed history.
 - Weekly run/strength checklist, real dates, mileage overrides, progress, and notes.
 - Optional one-click Google Calendar sync with links back to each training day.

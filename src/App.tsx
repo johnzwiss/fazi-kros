@@ -13,7 +13,7 @@ import { Profile } from "./components/Profile";
 import { currentWeekNumber, dateForWorkout, mondayOfCurrentWeek, planEndDate } from "./date";
 import { buildTrainingUrl, clearTrainingUrl, parseTrainingDeepLink, type CalendarView, type TrainingDeepLink } from "./deepLink";
 import { auth, firebaseConfigured } from "./firebase";
-import { deleteGoogleCalendar, GOOGLE_CALENDAR_SCOPE, syncGoogleCalendar } from "./googleCalendar";
+import { deleteGoogleCalendar, GOOGLE_CALENDAR_SCOPE, syncGoogleCalendar, syncHomeGoogleCalendar } from "./googleCalendar";
 import { planTemplateSchema } from "./schema";
 import {
   activateTemplate,
@@ -43,6 +43,7 @@ import {
   removeInvite,
   saveProfile,
   saveCalendarSyncState,
+  saveHomeCalendarSyncState,
   saveWeekNote,
   setChoreCompletion,
   setRestDayCompletion,
@@ -248,6 +249,8 @@ function LiveApp({ user, onSignOut }: { user: User; onSignOut: () => Promise<voi
   const [busy, setBusy] = useState(false);
   const [calendarBusy, setCalendarBusy] = useState(false);
   const [calendarMessage, setCalendarMessage] = useState("");
+  const [homeCalendarBusy, setHomeCalendarBusy] = useState(false);
+  const [homeCalendarMessage, setHomeCalendarMessage] = useState("");
   const [error, setError] = useState("");
   async function refresh(asOwner = owner) {
     const profile = await loadProfile(user.uid);
@@ -388,6 +391,35 @@ function LiveApp({ user, onSignOut }: { user: User; onSignOut: () => Promise<voi
     }
   }
 
+  async function syncHomeCalendar() {
+    if (!state?.home) return;
+    setHomeCalendarBusy(true);
+    setHomeCalendarMessage("");
+    setError("");
+    try {
+      const token = await calendarAccessToken();
+      const appBaseUrl = new URL(import.meta.env.BASE_URL, window.location.origin).toString();
+      const result = await syncHomeGoogleCalendar({
+        token,
+        existingCalendarId: state.profile.homeGoogleCalendar?.calendarId,
+        chores: state.chores,
+        appBaseUrl,
+      });
+      await saveHomeCalendarSyncState(user.uid, result.calendarId, result.calendarName);
+      await refresh();
+      const changed = result.created + result.updated + result.deleted;
+      setHomeCalendarMessage(result.failed
+        ? `Synced ${changed} changes; ${result.failed} chore${result.failed === 1 ? "" : "s"} need another try.`
+        : changed
+          ? `Google Calendar updated: ${result.created} added, ${result.updated} changed, ${result.deleted} removed.`
+          : "Your Home calendar is already up to date.");
+    } catch (reason) {
+      setError(messageOf(reason));
+    } finally {
+      setHomeCalendarBusy(false);
+    }
+  }
+
   async function disconnectCalendar() {
     if (!state?.profile.googleCalendar) return;
     if (!window.confirm("Delete the Training Plan Tracker calendar and disconnect it?")) return;
@@ -501,10 +533,12 @@ function LiveApp({ user, onSignOut }: { user: User; onSignOut: () => Promise<voi
   const common = { view, onView: changeView, name: state.profile.displayName, photoUrl: state.profile.photoUrl, owner, onSignOut };
   return <Layout {...common}>{error && <ErrorBanner message={error} />}
     {view === "home" && <Home home={state.home} chores={state.chores} profile={state.profile} busy={busy}
+      calendarConnected={Boolean(state.profile.homeGoogleCalendar)} calendarBusy={homeCalendarBusy} calendarMessage={homeCalendarMessage}
       onCreateHome={(partnerEmail) => perform(async () => { await createHome(user.uid, state.profile.email, partnerEmail); await refresh(); })}
-      onAdd={(chore) => perform(async () => { if (!state.home) return; await addChore(state.home.id, user.uid, chore); })}
+      onAdd={(chore) => perform(async () => { if (!state.home) return; const created = await addChore(state.home.id, user.uid, chore); setState((current) => current?.home ? { ...current, home: { ...current.home, savedChoreTitles: Array.from(new Set([...(current.home.savedChoreTitles || []), created.title])) } } : current); })}
       onToggle={(chore, completed) => perform(async () => { if (!state.home) return; await setChoreCompletion(state.home.id, chore.id, user.uid, completed); })}
       onDelete={(chore) => perform(async () => { if (!state.home) return; await deleteChore(state.home.id, chore.id); })}
+      onSyncCalendar={syncHomeCalendar}
     />}
     {view === "dashboard" && <Dashboard plan={displayedPlan} workouts={displayedWorkouts} note={note} restDays={displayedTraining?.readOnly ? {} : restDays} busy={busy}
       initialDate={displayedTraining?.link.date}
@@ -579,9 +613,11 @@ function DemoApp({ template, onExit }: { template: PlanTemplate; onExit: () => v
     { id: "demo-chore-1", title: "Water the plants", scheduledDate: format(addDays(new Date(), 1), "yyyy-MM-dd"), assigneeEmail: "owner@example.com", completed: false, createdBy: "demo" },
     { id: "demo-chore-2", title: "Take out recycling", scheduledDate: format(addDays(new Date(), 2), "yyyy-MM-dd"), assigneeEmail: null, completed: false, createdBy: "demo" },
   ]);
+  const [demoHomeCalendarMessage, setDemoHomeCalendarMessage] = useState("");
 
   async function addDemoChore(chore: NewChore) {
     setChores((items) => [...items, { ...chore, id: `demo-chore-${Date.now()}`, completed: false, createdBy: "demo" }]);
+    setDemoHome((current) => current ? { ...current, savedChoreTitles: Array.from(new Set([...(current.savedChoreTitles || []), chore.title])) } : current);
   }
 
   async function toggle(workout: UserWorkout, complete: boolean, actualMiles?: number) {
@@ -634,11 +670,12 @@ function DemoApp({ template, onExit }: { template: PlanTemplate; onExit: () => v
 
   const layout = { view, onView: setView, name: profile.displayName, photoUrl: profile.photoUrl, owner: true, demo: true, onSignOut: onExit };
   return <Layout {...layout}>
-    {view === "home" && <Home home={demoHome} chores={chores} profile={profile}
+    {view === "home" && <Home home={demoHome} chores={chores} profile={profile} calendarMessage={demoHomeCalendarMessage}
       onCreateHome={async (partnerEmail) => setDemoHome({ id: "demo-home", name: "Our home", createdBy: "demo", memberEmails: [profile.email, partnerEmail.trim().toLowerCase()] })}
       onAdd={addDemoChore}
       onToggle={async (chore, completed) => setChores((items) => items.map((item) => item.id === chore.id ? { ...item, completed } : item))}
       onDelete={async (chore) => setChores((items) => items.filter((item) => item.id !== chore.id))}
+      onSyncCalendar={async () => setDemoHomeCalendarMessage("Google Calendar sync is ready when you sign in with a connected account.")}
     />}
     {view === "dashboard" && <Dashboard plan={activePlan} workouts={workouts} note={notes[week] || ""} restDays={demoRestDays[week] || {}} onOpenLibrary={() => setView("library")} onWeekChange={setWeek} onToggle={toggle} onAdd={addDemoWorkout} onEdit={editDemoWorkout} onToggleRest={async (day, complete) => setDemoRestDays((items) => ({ ...items, [week]: { ...items[week], [day]: complete } }))} onBulk={async (items, complete) => { for (const item of items) await toggle(item, complete, item.plannedMiles); }} onNote={async (value) => setNotes((items) => ({ ...items, [week]: value }))} onFinish={async (completed) => { if (!activePlan) return; const finished = { ...activePlan, status: completed ? "completed" as const : "archived" as const }; setPlans((items) => items.map((item) => item.id === finished.id ? finished : item)); setActivePlan(null); setProfile((item) => ({ ...item, activePlanId: null, stats: completed ? { ...item.stats, plansCompleted: item.stats.plansCompleted + 1 } : item.stats })); setView("library"); }} />}
     {view === "library" && <Library templates={templates.filter((item) => item.status !== "archived")} plans={plans} activePlanId={profile.activePlanId} onActivate={async (selected, start) => { const next = makeDemoPlan(selected, start); setPlans((items) => [next.plan, ...items.map((item) => item.status === "active" ? { ...item, status: "archived" as const } : item)]); setActivePlan(next.plan); setWorkouts(next.workouts); setProfile((item) => ({ ...item, activePlanId: next.plan.id })); setView("dashboard"); }} />}

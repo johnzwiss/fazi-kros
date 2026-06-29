@@ -1,9 +1,10 @@
 import { addDays, format, parseISO } from "date-fns";
 import { buildTrainingUrl } from "./deepLink";
-import type { UserPlan, UserWorkout } from "./types";
+import type { Chore, UserPlan, UserWorkout } from "./types";
 
 export const GOOGLE_CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.app.created";
 export const GOOGLE_CALENDAR_NAME = "Training Plan Tracker";
+export const HOME_GOOGLE_CALENDAR_NAME = "Daybook — Home";
 const API_ROOT = "https://www.googleapis.com/calendar/v3";
 
 interface GoogleCalendarEvent {
@@ -101,7 +102,7 @@ export function calendarEventForWorkout(plan: UserPlan, workout: UserWorkout, ap
   };
 }
 
-export function fingerprintCalendarEvent(event: ReturnType<typeof calendarEventForWorkout>) {
+export function fingerprintCalendarEvent(event: unknown) {
   const input = JSON.stringify(event);
   let hash = 2166136261;
   for (let index = 0; index < input.length; index += 1) {
@@ -111,15 +112,15 @@ export function fingerprintCalendarEvent(event: ReturnType<typeof calendarEventF
   return (hash >>> 0).toString(36);
 }
 
-async function createCalendar(token: string, fetcher: Fetcher) {
+async function createCalendar(token: string, calendarName: string, fetcher: Fetcher) {
   const created = await calendarRequest<{ id: string }>(token, "/calendars", {
     method: "POST",
-    body: JSON.stringify({ summary: GOOGLE_CALENDAR_NAME, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC" }),
+    body: JSON.stringify({ summary: calendarName, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC" }),
   }, fetcher);
   return created.id;
 }
 
-async function ensureCalendar(token: string, calendarId: string | undefined, fetcher: Fetcher) {
+async function ensureCalendar(token: string, calendarId: string | undefined, calendarName: string, fetcher: Fetcher) {
   if (calendarId) {
     try {
       await calendarRequest(token, `/calendars/${encodeURIComponent(calendarId)}`, {}, fetcher);
@@ -128,10 +129,10 @@ async function ensureCalendar(token: string, calendarId: string | undefined, fet
       if (!(error instanceof GoogleCalendarError) || error.status !== 404) throw error;
     }
   }
-  return { calendarId: await createCalendar(token, fetcher), newlyCreated: true };
+  return { calendarId: await createCalendar(token, calendarName, fetcher), newlyCreated: true };
 }
 
-async function listManagedEvents(token: string, calendarId: string, fromDate: string, fetcher: Fetcher) {
+async function listManagedEvents(token: string, calendarId: string, fromDate: string, appMarker: string, fetcher: Fetcher) {
   const events: GoogleCalendarEvent[] = [];
   let pageToken = "";
   do {
@@ -139,7 +140,7 @@ async function listManagedEvents(token: string, calendarId: string, fromDate: st
       singleEvents: "true",
       maxResults: "2500",
       timeMin: `${fromDate}T00:00:00Z`,
-      privateExtendedProperty: "app=training-plan-tracker",
+      privateExtendedProperty: `app=${appMarker}`,
       ...(pageToken ? { pageToken } : {}),
     });
     const page = await calendarRequest<EventListResponse>(token, `/calendars/${encodeURIComponent(calendarId)}/events?${params}`, {}, fetcher);
@@ -170,10 +171,10 @@ export async function syncGoogleCalendar({
   today?: string;
   fetcher?: Fetcher;
 }): Promise<CalendarSyncResult> {
-  const { calendarId, newlyCreated } = await ensureCalendar(token, existingCalendarId, fetcher);
+  const { calendarId, newlyCreated } = await ensureCalendar(token, existingCalendarId, GOOGLE_CALENDAR_NAME, fetcher);
   const result: CalendarSyncResult = { calendarId, calendarName: GOOGLE_CALENDAR_NAME, created: 0, updated: 0, skipped: 0, deleted: 0, failed: 0, workoutUpdates: [] };
   const listFrom = plan && plan.startDate < today ? plan.startDate : today;
-  const managedEvents = newlyCreated ? [] : await listManagedEvents(token, calendarId, listFrom, fetcher);
+  const managedEvents = newlyCreated ? [] : await listManagedEvents(token, calendarId, listFrom, "training-plan-tracker", fetcher);
   const activeKeys = new Set(plan ? workouts.map((workout) => eventKey(plan.id, workout.id)) : []);
   const listedEvents = new Map<string, GoogleCalendarEvent>();
 
@@ -227,6 +228,98 @@ export async function syncGoogleCalendar({
       result.failed += 1;
     }
   }
+  return result;
+}
+
+export function calendarEventForChore(chore: Chore, appBaseUrl: string) {
+  const details = [
+    chore.assigneeEmail ? `Assigned to: ${chore.assigneeEmail}` : "Assigned to: either partner",
+    chore.notes || "",
+    "",
+    `Open Daybook: ${appBaseUrl}`,
+  ].filter((line, index, lines) => line || (index > 0 && lines[index - 1]));
+
+  return {
+    summary: `${chore.completed ? "✓ " : ""}${chore.title}`,
+    description: details.join("\n"),
+    start: { date: chore.scheduledDate },
+    end: { date: format(addDays(parseISO(chore.scheduledDate), 1), "yyyy-MM-dd") },
+    transparency: "transparent",
+    reminders: { useDefault: true },
+    source: { title: "Open in Daybook", url: appBaseUrl },
+    extendedProperties: {
+      private: {
+        app: "daybook-home",
+        choreId: chore.id,
+      },
+    },
+  };
+}
+
+export async function syncHomeGoogleCalendar({
+  token,
+  existingCalendarId,
+  chores,
+  appBaseUrl,
+  today = format(new Date(), "yyyy-MM-dd"),
+  fetcher = fetch,
+}: {
+  token: string;
+  existingCalendarId?: string;
+  chores: Chore[];
+  appBaseUrl: string;
+  today?: string;
+  fetcher?: Fetcher;
+}): Promise<CalendarSyncResult> {
+  const { calendarId, newlyCreated } = await ensureCalendar(token, existingCalendarId, HOME_GOOGLE_CALENDAR_NAME, fetcher);
+  const result: CalendarSyncResult = { calendarId, calendarName: HOME_GOOGLE_CALENDAR_NAME, created: 0, updated: 0, skipped: 0, deleted: 0, failed: 0, workoutUpdates: [] };
+  const listFrom = chores.reduce((earliest, chore) => chore.scheduledDate < earliest ? chore.scheduledDate : earliest, today);
+  const managedEvents = newlyCreated ? [] : await listManagedEvents(token, calendarId, listFrom, "daybook-home", fetcher);
+  const activeIds = new Set(chores.map((chore) => chore.id));
+  const listedEvents = new Map<string, GoogleCalendarEvent>();
+
+  for (const event of managedEvents) {
+    const metadata = event.extendedProperties?.private;
+    if (!event.id || !metadata?.choreId) continue;
+    listedEvents.set(metadata.choreId, event);
+    if (!activeIds.has(metadata.choreId) && (event.start?.date || "") >= today) {
+      try {
+        await calendarRequest(token, `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(event.id)}`, { method: "DELETE" }, fetcher);
+        result.deleted += 1;
+      } catch (error) {
+        if (error instanceof GoogleCalendarError && (error.status === 401 || error.status === 403)) throw error;
+        result.failed += 1;
+      }
+    }
+  }
+
+  for (const chore of chores) {
+    const basePayload = calendarEventForChore(chore, appBaseUrl);
+    const fingerprint = fingerprintCalendarEvent(basePayload);
+    const payload = {
+      ...basePayload,
+      extendedProperties: { private: { ...basePayload.extendedProperties.private, fingerprint } },
+    };
+    const listed = listedEvents.get(chore.id);
+    if (listed?.id && listed.extendedProperties?.private?.fingerprint === fingerprint) {
+      result.skipped += 1;
+      continue;
+    }
+
+    try {
+      if (listed?.id) {
+        await calendarRequest(token, `/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(listed.id)}`, { method: "PATCH", body: JSON.stringify(payload) }, fetcher);
+        result.updated += 1;
+      } else {
+        await calendarRequest(token, `/calendars/${encodeURIComponent(calendarId)}/events`, { method: "POST", body: JSON.stringify(payload) }, fetcher);
+        result.created += 1;
+      }
+    } catch (error) {
+      if (error instanceof GoogleCalendarError && (error.status === 401 || error.status === 403)) throw error;
+      result.failed += 1;
+    }
+  }
+
   return result;
 }
 

@@ -1,5 +1,6 @@
 import {
   CalendarDays,
+  CalendarSync,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -10,34 +11,59 @@ import {
   UsersRound,
   X,
 } from "lucide-react";
-import { addDays, format, isToday, parseISO, startOfWeek } from "date-fns";
+import { addDays, format, isToday, startOfWeek } from "date-fns";
 import { useMemo, useState, type FormEvent } from "react";
 import type { Chore, Home as HomeData, UserProfile } from "../types";
 
 export type NewChore = Pick<Chore, "title" | "scheduledDate" | "assigneeEmail" | "notes">;
+
+export const COMMON_CHORES = [
+  "Vacuum",
+  "Do laundry",
+  "Sweep",
+  "Mop",
+  "Clean kitchen counters",
+  "Do the dishes",
+  "Take out the trash",
+  "Clean the bathroom",
+  "Change the sheets",
+  "Buy groceries",
+  "Water the plants",
+  "Dust",
+] as const;
 
 interface HomeProps {
   home: HomeData | null;
   chores: Chore[];
   profile: UserProfile;
   busy?: boolean;
+  calendarConnected?: boolean;
+  calendarBusy?: boolean;
+  calendarMessage?: string;
   onCreateHome: (partnerEmail: string) => Promise<void>;
   onAdd: (chore: NewChore) => Promise<void>;
   onToggle: (chore: Chore, completed: boolean) => Promise<void>;
   onDelete: (chore: Chore) => Promise<void>;
+  onSyncCalendar?: () => Promise<void>;
 }
 
 function nameFromEmail(email: string) {
   return email.split("@")[0].split(/[._-]/).map((part) => part ? part[0].toUpperCase() + part.slice(1) : "").join(" ");
 }
 
-export function Home({ home, chores, profile, busy, onCreateHome, onAdd, onToggle, onDelete }: HomeProps) {
+export function Home({ home, chores, profile, busy, calendarConnected, calendarBusy, calendarMessage, onCreateHome, onAdd, onToggle, onDelete, onSyncCalendar }: HomeProps) {
   const today = format(new Date(), "yyyy-MM-dd");
   const [weekStart, setWeekStart] = useState(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [addingDate, setAddingDate] = useState<string | null>(null);
   const [partnerEmail, setPartnerEmail] = useState("");
   const [savingIds, setSavingIds] = useState<string[]>([]);
   const days = useMemo(() => Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)), [weekStart]);
+  const savedChoreTitles = useMemo(() => Array.from(new Map(
+    [...(home?.savedChoreTitles || []), ...chores.map((chore) => chore.title)]
+      .map((title) => title.trim())
+      .filter(Boolean)
+      .map((title) => [title.toLocaleLowerCase(), title]),
+  ).values()).sort((a, b) => a.localeCompare(b)), [chores, home?.savedChoreTitles]);
 
   if (!home) {
     return <div className="page-stack home-setup-page">
@@ -78,9 +104,12 @@ export function Home({ home, chores, profile, busy, onCreateHome, onAdd, onToggl
           <span title={profile.displayName}>{profile.displayName[0]?.toUpperCase()}</span>
           <span title={partnerName}>{partnerName[0]?.toUpperCase()}</span>
         </div>
+        {onSyncCalendar && <button className="secondary home-calendar-button" disabled={calendarBusy} onClick={onSyncCalendar}><CalendarSync className={calendarBusy ? "spin" : ""} size={17} /> {calendarBusy ? "Syncing…" : calendarConnected ? "Sync Google Calendar" : "Connect calendar"}</button>}
         <button onClick={() => setAddingDate(today)}><Plus size={18} /> Add chore</button>
       </div>
     </section>
+
+    {calendarMessage && <div className="calendar-status">{calendarMessage}</div>}
 
     <section className="card home-week-toolbar">
       <button className="icon-button" onClick={() => setWeekStart((date) => addDays(date, -7))} aria-label="Previous week"><ChevronLeft size={20} /></button>
@@ -112,12 +141,13 @@ export function Home({ home, chores, profile, busy, onCreateHome, onAdd, onToggl
       })}
     </section>
 
-    {addingDate && <ChoreEditor date={addingDate} profile={profile} partnerEmail={partner} partnerName={partnerName} busy={busy} onClose={() => setAddingDate(null)} onSave={async (chore) => { await onAdd(chore); setAddingDate(null); }} />}
+    {addingDate && <ChoreEditor date={addingDate} savedChoreTitles={savedChoreTitles} profile={profile} partnerEmail={partner} partnerName={partnerName} busy={busy} onClose={() => setAddingDate(null)} onSave={async (chore) => { await onAdd(chore); setAddingDate(null); }} />}
   </div>;
 }
 
-function ChoreEditor({ date, profile, partnerEmail, partnerName, busy, onClose, onSave }: { date: string; profile: UserProfile; partnerEmail: string; partnerName: string; busy?: boolean; onClose: () => void; onSave: (chore: NewChore) => Promise<void> }) {
+function ChoreEditor({ date, savedChoreTitles, profile, partnerEmail, partnerName, busy, onClose, onSave }: { date: string; savedChoreTitles: string[]; profile: UserProfile; partnerEmail: string; partnerName: string; busy?: boolean; onClose: () => void; onSave: (chore: NewChore) => Promise<void> }) {
   const [title, setTitle] = useState("");
+  const [selectedChore, setSelectedChore] = useState("");
   const [scheduledDate, setScheduledDate] = useState(date);
   const [assigneeEmail, setAssigneeEmail] = useState("");
   const [notes, setNotes] = useState("");
@@ -127,11 +157,24 @@ function ChoreEditor({ date, profile, partnerEmail, partnerName, busy, onClose, 
     await onSave({ title, scheduledDate, assigneeEmail: assigneeEmail || null, notes });
   }
 
+  const savedKeys = new Set(savedChoreTitles.map((item) => item.toLocaleLowerCase()));
+  const commonChores = COMMON_CHORES.filter((item) => !savedKeys.has(item.toLocaleLowerCase()));
+
+  function chooseChore(value: string) {
+    setSelectedChore(value);
+    if (value) setTitle(value);
+  }
+
   return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <section className="chore-editor" role="dialog" aria-modal="true" aria-labelledby="chore-editor-title">
       <header><div><p className="eyebrow">New chore</p><h2 id="chore-editor-title">Add something to the week</h2></div><button className="icon-button" onClick={onClose} aria-label="Close"><X size={19} /></button></header>
       <form onSubmit={submit}>
-        <label>What needs doing?<input autoFocus value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Take out the recycling" required /></label>
+        <label>Choose a chore<select className="chore-picker" value={selectedChore} onChange={(event) => chooseChore(event.target.value)}>
+          <option value="">Common or previously used…</option>
+          {savedChoreTitles.length > 0 && <optgroup label="Your saved chores">{savedChoreTitles.map((item) => <option value={item} key={`saved-${item}`}>{item}</option>)}</optgroup>}
+          {commonChores.length > 0 && <optgroup label="Common chores">{commonChores.map((item) => <option value={item} key={`common-${item}`}>{item}</option>)}</optgroup>}
+        </select><small>Chores you add are saved here automatically.</small></label>
+        <label>Chore name<input autoFocus value={title} onChange={(event) => { setTitle(event.target.value); if (event.target.value !== selectedChore) setSelectedChore(""); }} placeholder="Or type something new" required /></label>
         <div className="editor-grid">
           <label>Date<input type="date" value={scheduledDate} onChange={(event) => setScheduledDate(event.target.value)} required /></label>
           <label>Who?<select value={assigneeEmail} onChange={(event) => setAssigneeEmail(event.target.value)}><option value="">Either of us</option><option value={profile.email}>{profile.displayName}</option><option value={partnerEmail}>{partnerName}</option></select></label>

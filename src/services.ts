@@ -2,6 +2,7 @@ import type { User } from "firebase/auth";
 import type { DocumentData, UpdateData } from "firebase/firestore";
 import {
   addDoc,
+  arrayUnion,
   collection,
   deleteDoc,
   deleteField,
@@ -173,6 +174,20 @@ export async function saveCalendarSyncState(
 export async function clearCalendarIntegration(uid: string) {
   await updateDoc(doc(requireDb(), "users", uid), {
     googleCalendar: deleteField(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function saveHomeCalendarSyncState(uid: string, calendarId: string, calendarName: string) {
+  await setDoc(doc(requireDb(), "users", uid), {
+    homeGoogleCalendar: { calendarId, calendarName, needsSync: false, lastSyncedAt: serverTimestamp() },
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+}
+
+export async function clearHomeCalendarIntegration(uid: string) {
+  await updateDoc(doc(requireDb(), "users", uid), {
+    homeGoogleCalendar: deleteField(),
     updatedAt: serverTimestamp(),
   });
 }
@@ -550,7 +565,8 @@ export function watchHomeChores(homeId: string, onChange: (chores: Chore[]) => v
 }
 
 export async function addChore(homeId: string, uid: string, chore: Pick<Chore, "title" | "scheduledDate" | "assigneeEmail" | "notes">): Promise<Chore> {
-  const ref = doc(collection(requireDb(), "homes", homeId, "chores"));
+  const database = requireDb();
+  const ref = doc(collection(database, "homes", homeId, "chores"));
   const payload = {
     title: chore.title.trim(),
     scheduledDate: chore.scheduledDate,
@@ -562,7 +578,10 @@ export async function addChore(homeId: string, uid: string, chore: Pick<Chore, "
     createdBy: uid,
   };
   if (!payload.title) throw new Error("Give this chore a name");
-  await setDoc(ref, { ...payload, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  const batch = writeBatch(database);
+  batch.set(ref, { ...payload, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  batch.update(doc(database, "homes", homeId), { savedChoreTitles: arrayUnion(payload.title), updatedAt: serverTimestamp() });
+  await batch.commit();
   return { ...payload, id: ref.id };
 }
 

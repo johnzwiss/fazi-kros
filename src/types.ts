@@ -62,6 +62,7 @@ export interface UserProfile {
   shareStats: boolean;
   activePlanId?: string | null;
   googleCalendar?: GoogleCalendarIntegration;
+  homeGoogleCalendar?: GoogleCalendarIntegration;
   stats: UserStats;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
@@ -112,6 +113,7 @@ export interface Home {
   name: string;
   createdBy: string;
   memberEmails: string[];
+  savedChoreTitles?: string[];
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }

@@ -318,6 +318,7 @@ button.month-day:hover { border-color: #a9b8aa; background: #f1f5ee; transform: 
 
 .home-heading { align-items: center; }
 .home-heading-actions { display: flex; align-items: center; gap: 13px; }
+.home-calendar-button { white-space: nowrap; }
 .home-people { display: flex; padding-left: 10px; }
 .home-people span { width: 36px; height: 36px; display: grid; place-items: center; margin-left: -10px; border: 3px solid var(--cream); border-radius: 50%; color: white; background: #53725e; font-size: .74rem; font-weight: 800; }
 .home-people span:last-child { background: #b47b47; }
@@ -361,6 +362,8 @@ button.home-day-empty:hover { color: var(--forest); background: #f1f4ed; transfo
 .chore-editor > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
 .chore-editor h2 { margin: 0; font-family: "Newsreader", Georgia, serif; font-size: 1.65rem; }
 .chore-editor form { display: grid; gap: 14px; padding-top: 16px; }
+.chore-editor label > small { color: var(--muted); font-size: .68rem; font-weight: 500; }
+.chore-picker { background-color: #f3f6f0; border-color: #cdd9c9; }
 .chore-editor textarea { min-height: 86px; }
 .chore-editor footer { display: flex; justify-content: flex-end; gap: 8px; }
 .optional-label { color: var(--muted); font-size: .68rem; font-weight: 500; }
@@ -447,6 +450,9 @@ button.home-day-empty:hover { color: var(--forest); background: #f1f4ed; transfo
   .calendar-settings-body .button-row button { flex: 1; }
   .home-heading { display: grid; }
   .home-heading-actions { justify-content: space-between; }
+  .home-heading-actions { flex-wrap: wrap; }
+  .home-heading-actions .home-calendar-button { flex: 1; }
+  .home-heading-actions > button:last-child { flex: 1; }
   .home-week-toolbar { grid-template-columns: auto 1fr auto; }
   .home-week-toolbar > div { justify-self: stretch; justify-content: center; }
   .home-week-toolbar > .text-button { display: none; }
