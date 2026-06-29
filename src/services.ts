@@ -3,11 +3,13 @@ import type { DocumentData, UpdateData } from "firebase/firestore";
 import {
   addDoc,
   collection,
+  deleteDoc,
   deleteField,
   doc,
   getDoc,
   getDocs,
   orderBy,
+  onSnapshot,
   query,
   runTransaction,
   serverTimestamp,
@@ -23,6 +25,8 @@ import { applyDelta, workoutCompletionDelta } from "./stats";
 import {
   EMPTY_STATS,
   type DayKey,
+  type Chore,
+  type Home,
   type PlanTemplate,
   type SharedProfile,
   type TemplateWorkout,
@@ -503,4 +507,74 @@ export async function removeInvite(email: string) {
   batch.delete(doc(requireDb(), "allowedEmails", normalized));
   batch.delete(doc(requireDb(), "sharedProfiles", normalized));
   await batch.commit();
+}
+
+export async function loadHome(email: string): Promise<Home | null> {
+  const normalized = normalizeEmail(email);
+  const snapshot = await getDocs(query(
+    collection(requireDb(), "homes"),
+    where("memberEmails", "array-contains", normalized),
+  ));
+  const first = snapshot.docs[0];
+  return first ? { ...(first.data() as Omit<Home, "id">), id: first.id } : null;
+}
+
+export async function createHome(uid: string, email: string, partnerEmail: string): Promise<Home> {
+  const mine = normalizeEmail(email);
+  const partner = normalizeEmail(partnerEmail);
+  if (!partner || partner === mine) throw new Error("Enter your partner’s email address");
+  const existing = await loadHome(mine);
+  if (existing) return existing;
+
+  const ref = doc(collection(requireDb(), "homes"));
+  const home: Omit<Home, "id" | "createdAt" | "updatedAt"> = {
+    name: "Our home",
+    createdBy: uid,
+    memberEmails: [mine, partner],
+  };
+  await setDoc(ref, { ...home, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  return { ...home, id: ref.id };
+}
+
+export async function loadChores(homeId: string): Promise<Chore[]> {
+  const snapshot = await getDocs(query(collection(requireDb(), "homes", homeId, "chores"), orderBy("scheduledDate")));
+  return snapshot.docs.map((item) => ({ ...(item.data() as Omit<Chore, "id">), id: item.id }));
+}
+
+export function watchHomeChores(homeId: string, onChange: (chores: Chore[]) => void, onError: (error: Error) => void) {
+  return onSnapshot(
+    query(collection(requireDb(), "homes", homeId, "chores"), orderBy("scheduledDate")),
+    (snapshot) => onChange(snapshot.docs.map((item) => ({ ...(item.data() as Omit<Chore, "id">), id: item.id }))),
+    onError,
+  );
+}
+
+export async function addChore(homeId: string, uid: string, chore: Pick<Chore, "title" | "scheduledDate" | "assigneeEmail" | "notes">): Promise<Chore> {
+  const ref = doc(collection(requireDb(), "homes", homeId, "chores"));
+  const payload = {
+    title: chore.title.trim(),
+    scheduledDate: chore.scheduledDate,
+    assigneeEmail: chore.assigneeEmail ? normalizeEmail(chore.assigneeEmail) : null,
+    ...(chore.notes?.trim() ? { notes: chore.notes.trim() } : {}),
+    completed: false,
+    completedBy: null,
+    completedAt: null,
+    createdBy: uid,
+  };
+  if (!payload.title) throw new Error("Give this chore a name");
+  await setDoc(ref, { ...payload, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+  return { ...payload, id: ref.id };
+}
+
+export async function setChoreCompletion(homeId: string, choreId: string, uid: string, completed: boolean) {
+  await updateDoc(doc(requireDb(), "homes", homeId, "chores", choreId), {
+    completed,
+    completedBy: completed ? uid : null,
+    completedAt: completed ? serverTimestamp() : null,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function deleteChore(homeId: string, choreId: string) {
+  await deleteDoc(doc(requireDb(), "homes", homeId, "chores", choreId));
 }

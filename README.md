@@ -1,9 +1,11 @@
-# Training Plan Tracker
+# Daybook
 
-A small private training app for combined running and strength plans. The interface is hosted on GitHub Pages; Google sign-in and Firestore provide account access, synced check-offs, notes, profiles, history, and aggregate statistics.
+A private daily planner for a two-person home, with the existing combined running and strength planner built in. The interface is hosted on GitHub Pages; Google sign-in and Firestore provide account access and shared live updates.
 
 ## What is included
 
+- A private two-person Home with a shared weekly chore calendar.
+- Dated chores, partner assignment, shared check-offs, notes, and deletion.
 - One active plan per member, with archived and completed history.
 - Weekly run/strength checklist, real dates, mileage overrides, progress, and notes.
 - Optional one-click Google Calendar sync with links back to each training day.
@@ -48,9 +50,10 @@ The Firebase web configuration is not a server secret. Owner identity lives in t
 
 1. Sign in with the configured owner account. The owner is a normal athlete account and also sees **Admin**.
 2. Add invited Google email addresses in **Admin → Invited members**.
-3. Use **Copy AI prompt**, fill in the training requirements, and paste the AI's JSON response into the importer.
-4. Validate and publish the template. The supplied base-building example can also be loaded with one click.
-5. Open **Plans**, select a Monday, and start the plan.
+3. Open **Home**, enter your partner's invited email, and create the shared home.
+4. Use **Copy AI prompt**, fill in the training requirements, and paste the AI's JSON response into the importer.
+5. Validate and publish the template. The supplied base-building example can also be loaded with one click.
+6. Open **Plans**, select a Monday, and start the plan.
 
 Template copies are snapshots. Editing or archiving a shared template never rewrites a member's existing training plan.
 
@@ -76,9 +79,11 @@ users/{uid}
     workouts/{workoutId}
     weeks/{weekNumber}
 sharedProfiles/{normalizedEmail}
+homes/{homeId}
+  chores/{choreId}
 ```
 
-The owner can manage invitations and templates but cannot read another member's private `users/{uid}` tree. Members cannot create or edit admin records. `sharedProfiles` contains only fields a member explicitly opts into sharing.
+The owner can manage invitations and templates but cannot read another member's private `users/{uid}` tree. Members cannot create or edit admin records. A Home and its chores can be read or changed only by the two emails in its member list. `sharedProfiles` contains only fields a member explicitly opts into sharing.
 
 ## Tests
 

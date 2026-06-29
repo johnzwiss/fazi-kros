@@ -1,9 +1,11 @@
-import { AlertTriangle, Cloud, Dumbbell, LogIn, ShieldCheck } from "lucide-react";
+import { AlertTriangle, Cloud, House, LogIn, ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { addDays, format } from "date-fns";
 import type { User } from "firebase/auth";
 import { GoogleAuthProvider, onAuthStateChanged, reauthenticateWithPopup, signInWithPopup, signOut } from "firebase/auth";
 import { Admin } from "./components/Admin";
 import { Dashboard } from "./components/Dashboard";
+import { Home, type NewChore } from "./components/Home";
 import { Layout, ErrorBanner, LoadingScreen, type View } from "./components/Layout";
 import { Library } from "./components/Library";
 import { Members } from "./components/Members";
@@ -15,15 +17,20 @@ import { deleteGoogleCalendar, GOOGLE_CALENDAR_SCOPE, syncGoogleCalendar } from 
 import { planTemplateSchema } from "./schema";
 import {
   activateTemplate,
+  addChore,
   addWorkoutToPlan,
   addInvite,
   archiveTemplate,
   checkAccess,
   clearCalendarIntegration,
+  createHome,
+  deleteChore,
   ensureUserProfile,
   finishPlan,
   loadAllWorkouts,
   loadInvites,
+  loadHome,
+  loadChores,
   loadMembers,
   loadPlans,
   loadProfile,
@@ -37,15 +44,19 @@ import {
   saveProfile,
   saveCalendarSyncState,
   saveWeekNote,
+  setChoreCompletion,
   setRestDayCompletion,
   setWorkoutCompletion,
   updateWorkoutDefinition,
+  watchHomeChores,
 } from "./services";
 import { applyDelta, workoutCompletionDelta } from "./stats";
 import {
   EMPTY_STATS,
+  type Chore,
   type DayKey,
   type PlanTemplate,
+  type Home as HomeData,
   type SharedProfile,
   type TemplateWorkout,
   type UserPlan,
@@ -80,10 +91,10 @@ function SetupScreen({ onDemo }: { onDemo: (template: PlanTemplate) => void }) {
   }
   return <main className="auth-page">
     <section className="auth-card setup-card">
-      <span className="auth-logo"><Dumbbell size={28} /></span>
-      <p className="eyebrow">Training Plan Tracker</p>
-      <h1>The app is built.<br />Firebase is the last mile.</h1>
-      <p>Add the values from <code>.env.example</code> to <code>.env.local</code>, then restart the app to enable Google accounts and synced training data.</p>
+      <span className="auth-logo"><House size={28} /></span>
+      <p className="eyebrow">Daybook</p>
+      <h1>Home and training,<br />in one rhythm.</h1>
+      <p>Add the values from <code>.env.example</code> to <code>.env.local</code>, then restart the app to enable Google accounts and shared planning.</p>
       {error && <ErrorBanner message={error} />}
       <div className="setup-actions"><button onClick={preview} disabled={busy}><Cloud size={18} /> {busy ? "Loading…" : "Preview the app"}</button><a className="button secondary" href="https://console.firebase.google.com/" target="_blank" rel="noreferrer">Open Firebase</a></div>
       <div className="setup-note"><ShieldCheck size={18} /><span>The preview is local and disposable. Production data is protected by the included Firestore rules.</span></div>
@@ -102,7 +113,7 @@ function AuthApp() {
     try { await signInWithPopup(auth!, new GoogleAuthProvider()); } catch (reason) { setError(messageOf(reason)); }
   }
   if (!ready) return <LoadingScreen label="Checking your account…" />;
-  if (!user) return <main className="auth-page"><section className="auth-card"><span className="auth-logo"><Dumbbell size={28} /></span><p className="eyebrow">Training Plan Tracker</p><h1>Good work starts with a plan.</h1><p>Sign in with an invited Google account to see your training, history, and people.</p>{error && <ErrorBanner message={error} />}<button className="google-button" onClick={login}><LogIn size={19} /> Continue with Google</button><small>Private by default. Your workout data belongs to you.</small></section></main>;
+  if (!user) return <main className="auth-page"><section className="auth-card"><span className="auth-logo"><House size={28} /></span><p className="eyebrow">Daybook</p><h1>Make room for what matters.</h1><p>Sign in with an invited Google account to plan home life together and keep your training on track.</p>{error && <ErrorBanner message={error} />}<button className="google-button" onClick={login}><LogIn size={19} /> Continue with Google</button><small>Your training stays private. Home chores are shared only with your partner.</small></section></main>;
   return <LiveApp user={user} onSignOut={() => signOut(auth!)} />;
 }
 
@@ -115,6 +126,8 @@ interface AppState {
   allWorkouts: UserWorkout[];
   members: SharedProfile[];
   invites: string[];
+  home: HomeData | null;
+  chores: Chore[];
 }
 
 interface DisplayedTraining {
@@ -219,7 +232,7 @@ function addedWorkoutState(current: AppState, workout: UserWorkout): AppState {
 }
 
 function LiveApp({ user, onSignOut }: { user: User; onSignOut: () => Promise<void> }) {
-  const [view, setView] = useState<View>("dashboard");
+  const [view, setView] = useState<View>("home");
   const [state, setState] = useState<AppState | null>(null);
   const [requestedLink] = useState<{ link: TrainingDeepLink | null; error?: string }>(() => {
     try { return { link: parseTrainingDeepLink(window.location.search) }; }
@@ -238,17 +251,19 @@ function LiveApp({ user, onSignOut }: { user: User; onSignOut: () => Promise<voi
   const [error, setError] = useState("");
   async function refresh(asOwner = owner) {
     const profile = await loadProfile(user.uid);
-    const [templates, plans, members, invites] = await Promise.all([
+    const [templates, plans, members, invites, home] = await Promise.all([
       loadTemplates(asOwner),
       loadPlans(user.uid),
       loadMembers(),
       asOwner ? loadInvites().then((items) => items.map((item) => String(item.email))) : Promise.resolve([]),
+      loadHome(profile.email),
     ]);
     const activePlan = profile.activePlanId ? plans.find((plan) => plan.id === profile.activePlanId) || null : null;
     const [activeWorkouts, allWorkouts] = await Promise.all([
       activePlan ? loadWorkouts(user.uid, activePlan.id) : Promise.resolve([]),
       loadAllWorkouts(user.uid, plans),
     ]);
+    const chores = home ? await loadChores(home.id) : [];
     const selectedWeek = activePlan ? currentWeekNumber(activePlan.startDate, activePlan.weekCount) : 1;
     setWeek(selectedWeek);
     const [weekNote, savedRestDays] = activePlan
@@ -259,7 +274,7 @@ function LiveApp({ user, onSignOut }: { user: User; onSignOut: () => Promise<voi
       : ["", {}];
     setNote(weekNote);
     setRestDays(savedRestDays);
-    setState({ profile, templates, plans, activePlan, activeWorkouts, allWorkouts, members, invites });
+    setState({ profile, templates, plans, activePlan, activeWorkouts, allWorkouts, members, invites, home, chores });
   }
 
   useEffect(() => {
@@ -274,6 +289,15 @@ function LiveApp({ user, onSignOut }: { user: User; onSignOut: () => Promise<voi
       } catch (reason) { setError(messageOf(reason)); }
     })();
   }, [user.uid]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!state?.home) return;
+    return watchHomeChores(
+      state.home.id,
+      (chores) => setState((current) => current ? { ...current, chores } : current),
+      (reason) => setError(messageOf(reason)),
+    );
+  }, [state?.home?.id]);
 
   useEffect(() => {
     if (!state || linkResolved) return;
@@ -464,7 +488,7 @@ function LiveApp({ user, onSignOut }: { user: User; onSignOut: () => Promise<voi
   if (authorized === false) return <main className="auth-page"><section className="auth-card"><AlertTriangle size={34} /><h1>This account isn’t invited.</h1><p>Ask the owner to add <strong>{user.email}</strong>, then try again.</p><button onClick={onSignOut}>Use another account</button></section></main>;
   if (!state) {
     if (error) {
-      return <main className="auth-page"><section className="auth-card"><AlertTriangle size={34} /><h1>We couldn’t load your training.</h1><ErrorBanner message={error} /><p>Your Google sign-in worked, but Firebase rejected or could not complete the first data request.</p><div className="setup-actions"><button onClick={() => window.location.reload()}>Try again</button><button className="secondary" onClick={onSignOut}>Sign out</button></div></section></main>;
+      return <main className="auth-page"><section className="auth-card"><AlertTriangle size={34} /><h1>We couldn’t load your daybook.</h1><ErrorBanner message={error} /><p>Your Google sign-in worked, but Firebase rejected or could not complete the first data request.</p><div className="setup-actions"><button onClick={() => window.location.reload()}>Try again</button><button className="secondary" onClick={onSignOut}>Sign out</button></div></section></main>;
     }
     return <LoadingScreen />;
   }
@@ -476,6 +500,12 @@ function LiveApp({ user, onSignOut }: { user: User; onSignOut: () => Promise<voi
     : displayedPlan?.id === state.activePlan?.id ? state.activeWorkouts : displayedTraining?.workouts || [];
   const common = { view, onView: changeView, name: state.profile.displayName, photoUrl: state.profile.photoUrl, owner, onSignOut };
   return <Layout {...common}>{error && <ErrorBanner message={error} />}
+    {view === "home" && <Home home={state.home} chores={state.chores} profile={state.profile} busy={busy}
+      onCreateHome={(partnerEmail) => perform(async () => { await createHome(user.uid, state.profile.email, partnerEmail); await refresh(); })}
+      onAdd={(chore) => perform(async () => { if (!state.home) return; await addChore(state.home.id, user.uid, chore); })}
+      onToggle={(chore, completed) => perform(async () => { if (!state.home) return; await setChoreCompletion(state.home.id, chore.id, user.uid, completed); })}
+      onDelete={(chore) => perform(async () => { if (!state.home) return; await deleteChore(state.home.id, chore.id); })}
+    />}
     {view === "dashboard" && <Dashboard plan={displayedPlan} workouts={displayedWorkouts} note={note} restDays={displayedTraining?.readOnly ? {} : restDays} busy={busy}
       initialDate={displayedTraining?.link.date}
       initialView={displayedTraining?.link.view}
@@ -531,7 +561,7 @@ function makeDemoPlan(template: PlanTemplate, startDate: string): { plan: UserPl
 
 function DemoApp({ template, onExit }: { template: PlanTemplate; onExit: () => void }) {
   const initial = useMemo(() => makeDemoPlan(template, mondayOfCurrentWeek()), [template]);
-  const [view, setView] = useState<View>("dashboard");
+  const [view, setView] = useState<View>("home");
   const [profile, setProfile] = useState<UserProfile>({ uid: "demo", email: "owner@example.com", displayName: "Alex Runner", bio: "Runner, lifter, and enthusiastic keeper of tiny promises.", trainingGoals: "Build a durable aerobic base and stay strong enough for everything else.", shareStats: true, activePlanId: initial.plan.id, stats: { ...EMPTY_STATS } });
   const [templates, setTemplates] = useState<PlanTemplate[]>([template]);
   const [plans, setPlans] = useState<UserPlan[]>([initial.plan]);
@@ -544,6 +574,15 @@ function DemoApp({ template, onExit }: { template: PlanTemplate; onExit: () => v
   const [members, setMembers] = useState<SharedProfile[]>([
     { email: "sam@example.com", displayName: "Sam Miles", bio: "Trail-curious and learning to love easy days.", trainingGoals: "A comfortable fall half marathon.", stats: { workoutsCompleted: 42, runsCompleted: 27, strengthWorkoutsCompleted: 15, milesRun: 138.6, plansCompleted: 1 } },
   ]);
+  const [demoHome, setDemoHome] = useState<HomeData | null>({ id: "demo-home", name: "Our home", createdBy: "demo", memberEmails: ["owner@example.com", "sam@example.com"] });
+  const [chores, setChores] = useState<Chore[]>([
+    { id: "demo-chore-1", title: "Water the plants", scheduledDate: format(addDays(new Date(), 1), "yyyy-MM-dd"), assigneeEmail: "owner@example.com", completed: false, createdBy: "demo" },
+    { id: "demo-chore-2", title: "Take out recycling", scheduledDate: format(addDays(new Date(), 2), "yyyy-MM-dd"), assigneeEmail: null, completed: false, createdBy: "demo" },
+  ]);
+
+  async function addDemoChore(chore: NewChore) {
+    setChores((items) => [...items, { ...chore, id: `demo-chore-${Date.now()}`, completed: false, createdBy: "demo" }]);
+  }
 
   async function toggle(workout: UserWorkout, complete: boolean, actualMiles?: number) {
     if (workout.completed === complete && actualMiles === workout.actualMiles) return;
@@ -595,6 +634,12 @@ function DemoApp({ template, onExit }: { template: PlanTemplate; onExit: () => v
 
   const layout = { view, onView: setView, name: profile.displayName, photoUrl: profile.photoUrl, owner: true, demo: true, onSignOut: onExit };
   return <Layout {...layout}>
+    {view === "home" && <Home home={demoHome} chores={chores} profile={profile}
+      onCreateHome={async (partnerEmail) => setDemoHome({ id: "demo-home", name: "Our home", createdBy: "demo", memberEmails: [profile.email, partnerEmail.trim().toLowerCase()] })}
+      onAdd={addDemoChore}
+      onToggle={async (chore, completed) => setChores((items) => items.map((item) => item.id === chore.id ? { ...item, completed } : item))}
+      onDelete={async (chore) => setChores((items) => items.filter((item) => item.id !== chore.id))}
+    />}
     {view === "dashboard" && <Dashboard plan={activePlan} workouts={workouts} note={notes[week] || ""} restDays={demoRestDays[week] || {}} onOpenLibrary={() => setView("library")} onWeekChange={setWeek} onToggle={toggle} onAdd={addDemoWorkout} onEdit={editDemoWorkout} onToggleRest={async (day, complete) => setDemoRestDays((items) => ({ ...items, [week]: { ...items[week], [day]: complete } }))} onBulk={async (items, complete) => { for (const item of items) await toggle(item, complete, item.plannedMiles); }} onNote={async (value) => setNotes((items) => ({ ...items, [week]: value }))} onFinish={async (completed) => { if (!activePlan) return; const finished = { ...activePlan, status: completed ? "completed" as const : "archived" as const }; setPlans((items) => items.map((item) => item.id === finished.id ? finished : item)); setActivePlan(null); setProfile((item) => ({ ...item, activePlanId: null, stats: completed ? { ...item.stats, plansCompleted: item.stats.plansCompleted + 1 } : item.stats })); setView("library"); }} />}
     {view === "library" && <Library templates={templates.filter((item) => item.status !== "archived")} plans={plans} activePlanId={profile.activePlanId} onActivate={async (selected, start) => { const next = makeDemoPlan(selected, start); setPlans((items) => [next.plan, ...items.map((item) => item.status === "active" ? { ...item, status: "archived" as const } : item)]); setActivePlan(next.plan); setWorkouts(next.workouts); setProfile((item) => ({ ...item, activePlanId: next.plan.id })); setView("dashboard"); }} />}
     {view === "members" && <Members members={members} />}

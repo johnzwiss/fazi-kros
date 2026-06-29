@@ -1,6 +1,7 @@
 import {
   BookOpen,
   Dumbbell,
+  House,
   LoaderCircle,
   LogOut,
   ShieldCheck,
@@ -9,7 +10,7 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 
-export type View = "dashboard" | "library" | "members" | "profile" | "admin";
+export type View = "home" | "dashboard" | "library" | "members" | "profile" | "admin";
 
 interface LayoutProps {
   children: ReactNode;
@@ -23,6 +24,7 @@ interface LayoutProps {
 }
 
 const NAV_ITEMS: Array<{ id: View; label: string; icon: typeof Dumbbell }> = [
+  { id: "home", label: "Home", icon: House },
   { id: "dashboard", label: "Training", icon: Dumbbell },
   { id: "library", label: "Plans", icon: BookOpen },
   { id: "members", label: "Members", icon: UsersRound },
@@ -34,9 +36,9 @@ export function Layout({ children, view, onView, name, photoUrl, owner, demo, on
   return (
     <div className="app-shell">
       <header className="app-header">
-        <button className="brand" onClick={() => onView("dashboard")} aria-label="Training Plan Tracker home">
-          <span className="brand-mark"><Dumbbell size={20} /></span>
-          <span><strong>Training Plan</strong><small>Tracker</small></span>
+        <button className="brand" onClick={() => onView("home")} aria-label="Daybook home">
+          <span className="brand-mark"><House size={20} /></span>
+          <span><strong>Daybook</strong><small>Home & training</small></span>
         </button>
         <nav className="desktop-nav" aria-label="Primary navigation">
           {items.map(({ id, label, icon: Icon }) => (

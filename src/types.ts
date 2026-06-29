@@ -107,6 +107,29 @@ export interface SharedProfile {
   updatedAt?: Timestamp;
 }
 
+export interface Home {
+  id: string;
+  name: string;
+  createdBy: string;
+  memberEmails: string[];
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
+}
+
+export interface Chore {
+  id: string;
+  title: string;
+  scheduledDate: string;
+  assigneeEmail?: string | null;
+  notes?: string;
+  completed: boolean;
+  completedBy?: string | null;
+  completedAt?: Timestamp | null;
+  createdBy: string;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
+}
+
 export const EMPTY_STATS: UserStats = {
   workoutsCompleted: 0,
   runsCompleted: 0,

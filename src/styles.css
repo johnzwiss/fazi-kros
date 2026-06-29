@@ -316,6 +316,55 @@ button.month-day:hover { border-color: #a9b8aa; background: #f1f5ee; transform: 
 .member-stats svg { color: #69816f; }
 .member-stats strong { color: var(--ink); }
 
+.home-heading { align-items: center; }
+.home-heading-actions { display: flex; align-items: center; gap: 13px; }
+.home-people { display: flex; padding-left: 10px; }
+.home-people span { width: 36px; height: 36px; display: grid; place-items: center; margin-left: -10px; border: 3px solid var(--cream); border-radius: 50%; color: white; background: #53725e; font-size: .74rem; font-weight: 800; }
+.home-people span:last-child { background: #b47b47; }
+.home-week-toolbar { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 6px; padding: 9px 12px; box-shadow: none; }
+.home-week-toolbar > div { justify-self: center; display: flex; align-items: center; gap: 8px; color: var(--forest); }
+.home-week-toolbar strong { color: var(--ink); font-size: .88rem; }
+.home-week-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+.home-day-card { min-width: 0; min-height: 330px; padding: 10px; border: 1px solid var(--line); border-radius: 18px; background: rgba(255,254,250,.85); box-shadow: 0 6px 20px rgba(33,49,38,.04); }
+.home-day-card.today { border-color: #78927f; box-shadow: 0 0 0 2px rgba(65,102,79,.1); }
+.home-day-card > header { display: flex; align-items: center; justify-content: space-between; padding: 2px 1px 10px; border-bottom: 1px solid #ece9df; }
+.home-day-card > header > div { display: flex; align-items: baseline; gap: 6px; }
+.home-day-card > header span { color: var(--muted); font-size: .67rem; font-weight: 800; text-transform: uppercase; }
+.home-day-card > header strong { font-family: "Newsreader", Georgia, serif; font-size: 1.35rem; }
+.home-day-card.today > header strong { color: var(--forest); }
+.home-chore-list { display: grid; align-content: start; gap: 7px; padding-top: 9px; }
+.home-chore { position: relative; min-width: 0; display: grid; grid-template-columns: 24px minmax(0,1fr); gap: 7px; padding: 9px 7px; border: 1px solid #e5e1d7; border-radius: 12px; background: #fbfaf5; }
+.home-chore:hover .chore-delete { opacity: 1; }
+.home-chore.complete { background: #eef3eb; border-color: #d4dfd0; }
+.home-chore > div { min-width: 0; display: grid; gap: 4px; }
+.home-chore strong { overflow-wrap: anywhere; font-size: .72rem; line-height: 1.25; }
+.home-chore.complete strong { color: #768078; text-decoration: line-through; }
+.home-chore small { display: flex; align-items: center; gap: 3px; color: var(--muted); font-size: .6rem; }
+.home-chore p { margin: 2px 0 0; color: var(--muted); font-size: .62rem; line-height: 1.35; }
+button.chore-check { align-self: start; width: 24px; height: 24px; display: grid; place-items: center; padding: 0; border: 1.5px solid #a9afa9; border-radius: 8px; color: white; background: white; }
+button.chore-check:hover { border-color: var(--forest); background: var(--sage); transform: none; }
+.complete button.chore-check { border-color: var(--forest); background: var(--forest); }
+button.chore-check.saving { opacity: .55; }
+button.chore-delete { position: absolute; top: 3px; right: 3px; width: 24px; height: 24px; padding: 0; opacity: 0; color: var(--muted); background: #fbfaf5; transition: opacity .15s ease; }
+button.chore-delete:hover { color: var(--danger); background: #f8eae6; transform: none; }
+button.home-day-empty { width: 100%; justify-content: space-between; padding: 9px 7px; border: 1px dashed #d8d5cb; border-radius: 10px; color: #91938d; background: transparent; font-size: .65rem; font-weight: 600; }
+button.home-day-empty:hover { color: var(--forest); background: #f1f4ed; transform: none; }
+.home-setup-page { max-width: 820px; margin: 0 auto; }
+.home-setup-card { display: grid; grid-template-columns: auto 1fr; align-items: start; gap: 13px 18px; padding: 28px; }
+.home-setup-card p { margin: 0; color: var(--muted); }
+.home-setup-card form, .home-setup-card > small { grid-column: 2; }
+.home-setup-card form { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 10px; }
+.home-setup-card form button { white-space: nowrap; }
+.home-setup-card > small { color: var(--muted); }
+.home-setup-icon { width: 50px; height: 50px; display: grid; place-items: center; border-radius: 16px; color: var(--forest); background: var(--sage); }
+.chore-editor { width: min(560px, 100%); max-height: calc(100vh - 40px); overflow-y: auto; padding: 22px; border: 1px solid var(--line); border-radius: 24px; background: var(--paper); box-shadow: 0 30px 90px rgba(15,25,18,.25); }
+.chore-editor > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.chore-editor h2 { margin: 0; font-family: "Newsreader", Georgia, serif; font-size: 1.65rem; }
+.chore-editor form { display: grid; gap: 14px; padding-top: 16px; }
+.chore-editor textarea { min-height: 86px; }
+.chore-editor footer { display: flex; justify-content: flex-end; gap: 8px; }
+.optional-label { color: var(--muted); font-size: .68rem; font-weight: 500; }
+
 .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
 .admin-panel, .prompt-panel { display: grid; align-content: start; gap: 15px; }
 .invite-form { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
@@ -349,6 +398,7 @@ button.month-day:hover { border-color: #a9b8aa; background: #f1f5ee; transform: 
   .summary-grid { grid-template-columns: 1fr 1fr; }
   .progress-card { grid-column: 1 / -1; }
   .members-grid { grid-template-columns: repeat(2, 1fr); }
+  .home-week-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
 @media (max-width: 760px) {
@@ -357,7 +407,7 @@ button.month-day:hover { border-color: #a9b8aa; background: #f1f5ee; transform: 
   .account-chip > .icon-button { display: grid; place-items: center; }
   .page-container { width: min(100% - 24px, 600px); padding: 28px 0 94px; }
   .mobile-nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 25; display: flex; justify-content: space-around; padding: 7px 8px max(7px, env(safe-area-inset-bottom)); background: rgba(255,254,250,.96); border-top: 1px solid var(--line); backdrop-filter: blur(15px); }
-  .mobile-nav button { min-width: 58px; display: grid; justify-items: center; gap: 2px; padding: 5px 7px; background: transparent; color: #838780; border-radius: 10px; font-size: .62rem; }
+  .mobile-nav button { min-width: 0; flex: 1; display: grid; justify-items: center; gap: 2px; padding: 5px 3px; background: transparent; color: #838780; border-radius: 10px; font-size: .58rem; }
   .mobile-nav button:hover, .mobile-nav button.active { color: var(--forest); background: var(--sage); transform: none; }
   .page-heading, .dashboard-heading { display: grid; align-items: start; gap: 14px; }
   .dashboard-heading-actions { width: 100%; display: grid; justify-content: stretch; }
@@ -395,6 +445,23 @@ button.month-day:hover { border-color: #a9b8aa; background: #f1f5ee; transform: 
   .calendar-settings-body { display: grid; }
   .calendar-settings-body .button-row { justify-content: stretch; }
   .calendar-settings-body .button-row button { flex: 1; }
+  .home-heading { display: grid; }
+  .home-heading-actions { justify-content: space-between; }
+  .home-week-toolbar { grid-template-columns: auto 1fr auto; }
+  .home-week-toolbar > div { justify-self: stretch; justify-content: center; }
+  .home-week-toolbar > .text-button { display: none; }
+  .home-week-grid { grid-template-columns: 1fr; }
+  .home-day-card { min-height: 0; display: grid; grid-template-columns: 64px minmax(0,1fr); padding: 9px; }
+  .home-day-card > header { display: grid; align-content: start; justify-items: center; padding: 5px 9px 5px 2px; border-right: 1px solid #ece9df; border-bottom: 0; }
+  .home-day-card > header > div { display: grid; justify-items: center; gap: 0; }
+  .home-day-card > header .day-add-button { margin-top: 6px; }
+  .home-chore-list { padding: 0 0 0 9px; }
+  button.chore-delete { opacity: 1; }
+  .home-setup-card { grid-template-columns: 1fr; }
+  .home-setup-card form, .home-setup-card > small { grid-column: 1; }
+  .home-setup-card form { grid-template-columns: 1fr; }
+  .home-setup-card form button { width: 100%; }
+  .chore-editor { padding: 17px; border-radius: 18px; }
   .plan-table-row { grid-template-columns: 1fr auto; }
   .plan-table-row > span:nth-of-type(2) { display: none; }
   .importer-head { align-items: flex-start; display: grid; }

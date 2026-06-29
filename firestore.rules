@@ -46,5 +46,32 @@ service cloud.firestore {
       allow create, update: if isAllowed() && request.auth.token.email == email;
       allow delete: if isOwner() || (isAllowed() && request.auth.token.email == email);
     }
+
+    function isHomeMember(homeId) {
+      return isAllowed() &&
+        request.auth.token.email in get(/databases/$(database)/documents/homes/$(homeId)).data.memberEmails;
+    }
+
+    match /homes/{homeId} {
+      allow get: if isHomeMember(homeId);
+      allow list: if isAllowed() && request.auth.token.email in resource.data.memberEmails;
+      allow create: if isAllowed() &&
+        request.resource.data.createdBy == request.auth.uid &&
+        request.resource.data.memberEmails.size() == 2 &&
+        request.auth.token.email in request.resource.data.memberEmails;
+      allow update: if isHomeMember(homeId) &&
+        request.resource.data.memberEmails == resource.data.memberEmails &&
+        request.resource.data.createdBy == resource.data.createdBy;
+      allow delete: if isHomeMember(homeId) && resource.data.createdBy == request.auth.uid;
+
+      match /chores/{choreId} {
+        allow read: if isHomeMember(homeId);
+        allow create: if isHomeMember(homeId) &&
+          request.resource.data.createdBy == request.auth.uid &&
+          request.resource.data.scheduledDate is string &&
+          request.resource.data.title is string;
+        allow update, delete: if isHomeMember(homeId);
+      }
+    }
   }
 }
